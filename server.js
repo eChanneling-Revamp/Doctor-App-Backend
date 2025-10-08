@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 
 import appointmentRoutes from "./routes/appointmentRoutes.js";
 import sessionRoutes from "./routes/sessionRoutes.js";
+import prescriptionRoutes from './routes/prescriptionRoutes.js';
 
 dotenv.config();
 const app = express();
@@ -14,6 +15,7 @@ app.use(express.json());
 // Routes
 app.use("/api/appointments", appointmentRoutes);
 app.use("/api/sessions", sessionRoutes);
+app.use('/api/prescriptions', prescriptionRoutes);
 
 // Root route
 app.get("/", (req, res) => {

@@ -15,11 +15,17 @@ model Doctor {
   appointments Appointment[] @relation("DoctorAppointments")
 }
 
+
 model Patient {
-  id           Int           @id @default(autoincrement())
-  name         String
-  email        String        @unique
-  appointments Appointment[]
+  id            Int             @id @default(autoincrement())
+  name          String
+  email         String?         @unique
+  age           Int?
+  patientId     String?         @unique
+  ref           String?
+  status        String          @default("Active")
+  appointments  Appointment[]
+  prescriptions Prescription[]
 }
 
 model Session {
@@ -46,4 +52,38 @@ model Appointment {
   session Session @relation(fields: [sessionId], references: [id])
   doctor  Doctor  @relation("DoctorAppointments", fields: [doctorId], references: [id])
   patient Patient @relation(fields: [patientId], references: [id])
+}
+
+
+
+
+model Prescription {
+  id            Int             @id @default(autoincrement())
+  patientId     Int
+  createdAt     DateTime        @default(now())
+  medicines     MedicineOnPrescription[]
+  patient       Patient         @relation(fields: [patientId], references: [id])
+}
+
+model Medicine {
+  id            Int                     @id @default(autoincrement())
+  name          String
+  dosage        String?
+  frequency     String?
+  instructions  String?
+  favorites     Boolean                 @default(false)
+  prescriptions MedicineOnPrescription[]
+}
+
+model MedicineOnPrescription {
+  id               Int          @id @default(autoincrement())
+  prescriptionId   Int
+  medicineId       Int
+  dosage           String
+  frequency        String
+  period           String
+  specialNote      String?
+
+  prescription     Prescription @relation(fields: [prescriptionId], references: [id])
+  medicine         Medicine     @relation(fields: [medicineId], references: [id])
 }
