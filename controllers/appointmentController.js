@@ -1,59 +1,95 @@
-import { PrismaClient } from "@prisma/client";
-const prisma = new PrismaClient();
+import prisma from "../config/db.js";
+import { notifyPatientCancellation } from "../services/notificationService.js";
 
+// Create a new appointment
 export const createAppointment = async (req, res) => {
   try {
-    const { date, time, doctorId, patientId } = req.body;
+    const { sessionId, patientId } = req.body;
+
     const appointment = await prisma.appointment.create({
-      data: { date: new Date(date), time, doctorId, patientId },
+      data: {
+        sessionId: Number(sessionId),
+        patientId: Number(patientId),
+        status: "Scheduled"
+      },
+      include: {
+        session: { include: { doctor: true } },
+        patient: true
+      }
     });
-    res.json(appointment);
+
+    res.json({ success: true, data: appointment });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
+// Get all appointments
 export const getAllAppointments = async (req, res) => {
   try {
     const appointments = await prisma.appointment.findMany({
-      include: { doctor: true, patient: true },
+      include: { session: { include: { doctor: true } }, patient: true },
+      orderBy: { createdAt: "desc" }
     });
-    res.json(appointments);
+
+    res.json({ success: true, data: appointments });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
+// Get appointment by ID
 export const getAppointmentById = async (req, res) => {
   try {
     const appointment = await prisma.appointment.findUnique({
       where: { id: Number(req.params.id) },
-      include: { doctor: true, patient: true },
+      include: { session: { include: { doctor: true } }, patient: true }
     });
-    if (!appointment) return res.status(404).json({ message: "Not found" });
-    res.json(appointment);
+
+    if (!appointment) return res.status(404).json({ message: "Appointment not found" });
+    res.json({ success: true, data: appointment });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-export const updateAppointmentStatus = async (req, res) => {
+// Cancel appointment
+export const cancelAppointment = async (req, res) => {
   try {
-    const { status } = req.body;
-    const updated = await prisma.appointment.update({
+    const appointment = await prisma.appointment.update({
       where: { id: Number(req.params.id) },
-      data: { status },
+      data: { status: "Cancelled" },
+      include: { patient: true }
     });
-    res.json(updated);
+
+    if (appointment?.patient?.email) {
+      await notifyPatientCancellation(appointment.patient.email, appointment.id);
+    }
+
+    res.json({ success: true, message: `Appointment #${appointment.id} cancelled and patient notified.` });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-export const deleteAppointment = async (req, res) => {
+// Get upcoming appointments for a doctor
+export const getUpcomingAppointments = async (req, res) => {
   try {
-    await prisma.appointment.delete({ where: { id: Number(req.params.id) } });
-    res.json({ message: "Appointment deleted" });
+    const { doctorId } = req.params;
+
+    const appointments = await prisma.appointment.findMany({
+      where: {
+        session: {
+          doctorId: Number(doctorId),
+          date: { gte: new Date() }
+        },
+        status: "Scheduled"
+      },
+      include: { session: true, patient: true },
+      orderBy: { "session.date": "asc" }
+    });
+
+    res.json({ success: true, data: appointments });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

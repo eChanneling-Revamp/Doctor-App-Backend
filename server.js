@@ -1,22 +1,25 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import { PrismaClient } from "@prisma/client";
+
 import appointmentRoutes from "./routes/appointmentRoutes.js";
-import sessionRoutes from "./routes/sessionRoutes.js"; 
+import sessionRoutes from "./routes/sessionRoutes.js";
 
 dotenv.config();
 const app = express();
-const prisma = new PrismaClient();
 
 app.use(cors());
 app.use(express.json());
 
+// Routes
 app.use("/api/appointments", appointmentRoutes);
-app.use("/api/sessions", sessionRoutes); 
+app.use("/api/sessions", sessionRoutes);
+
+// Root route
 app.get("/", (req, res) => {
   res.send("Doctor Appointment Backend Running with Prisma + PostgreSQL");
 });
 
+// Start server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
