@@ -1,89 +1,15 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-}
-
-model Doctor {
-  id           Int           @id @default(autoincrement())
-  name         String
-  email        String        @unique
-  sessions     Session[]
-  appointments Appointment[] @relation("DoctorAppointments")
-}
-
-
-model Patient {
-  id            Int             @id @default(autoincrement())
-  name          String
-  email         String?         @unique
-  age           Int?
-  patientId     String?         @unique
-  ref           String?
-  status        String          @default("Active")
-  appointments  Appointment[]
-  prescriptions Prescription[]
-}
-
-model Session {
-  id           Int           @id @default(autoincrement())
-  doctorId     Int
-  date         DateTime
-  startTime    String
-  endTime      String
-  location     String
-  status       String        @default("Active")
-  doctor       Doctor        @relation(fields: [doctorId], references: [id])
-  appointments Appointment[]
-}
-
-model Appointment {
-  id        Int      @id @default(autoincrement())
-  sessionId Int
-  doctorId  Int
-  patientId Int
-  status    String   @default("Scheduled") // Scheduled, Cancelled, Completed
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  session Session @relation(fields: [sessionId], references: [id])
-  doctor  Doctor  @relation("DoctorAppointments", fields: [doctorId], references: [id])
-  patient Patient @relation(fields: [patientId], references: [id])
-}
-
-
-
-
-model Prescription {
-  id            Int             @id @default(autoincrement())
-  patientId     Int
-  createdAt     DateTime        @default(now())
-  medicines     MedicineOnPrescription[]
-  patient       Patient         @relation(fields: [patientId], references: [id])
-}
-
-model Medicine {
-  id            Int                     @id @default(autoincrement())
-  name          String
-  dosage        String?
-  frequency     String?
-  instructions  String?
-  favorites     Boolean                 @default(false)
-  prescriptions MedicineOnPrescription[]
-}
-
-model MedicineOnPrescription {
-  id               Int          @id @default(autoincrement())
-  prescriptionId   Int
-  medicineId       Int
-  dosage           String
-  frequency        String
-  period           String
-  specialNote      String?
-
-  prescription     Prescription @relation(fields: [prescriptionId], references: [id])
-  medicine         Medicine     @relation(fields: [medicineId], references: [id])
 }

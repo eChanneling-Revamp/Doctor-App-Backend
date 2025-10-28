@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    /* Core Settings */
+    "target": "ES2020",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "skipLibCheck": true,
+
+    /* Output */
+    "outDir": "dist",
+    "sourceMap": true,
+
+    /* Optional — if you want cleaner import paths */
+    "baseUrl": "./src",
+
+    /* Node environment */
+    "types": ["node"]
+  },
+  "include": ["src"]
+}
