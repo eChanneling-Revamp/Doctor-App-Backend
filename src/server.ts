@@ -3,7 +3,6 @@ import cors from "cors";
 import dotenv from "dotenv";
 import { PrismaClient } from "@prisma/client";
 import prescriptionRoutes from "./routes/prescription.routes";
-import sessionRoutes from "./routes/session.routes"; // ✅ import routes
 
 dotenv.config();
 
@@ -14,7 +13,6 @@ app.use(cors());
 app.use(express.json());
 
 // ✅ Connect the session routes
-app.use("/api/sessions", sessionRoutes);
 app.use("/api/prescriptions",prescriptionRoutes);
 // Root route
 app.get("/", (req, res) => {

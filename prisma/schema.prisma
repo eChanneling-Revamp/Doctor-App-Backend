@@ -7,81 +7,41 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Doctor {
-  id           Int           @id @default(autoincrement())
-  name         String
-  email        String        @unique
-  sessions     Session[]
-  appointments Appointment[] @relation("DoctorAppointments") // ✅ opposite relation added
-}
-
-model Session {
-  id              Int      @id @default(autoincrement())
-  doctorId        Int
-  hospitalName    String
-  patientCapacity Int
-  startTime       DateTime
-  endTime         DateTime
-  sessionType     String
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  doctor       Doctor        @relation(fields: [doctorId], references: [id])
-  appointments Appointment[] // ✅ opposite relation added
-}
-
-model Patient {
+model Appointment {
   id            Int            @id @default(autoincrement())
-  name          String
-  email         String?        @unique
-  age           Int?
-  patientId     String?        @unique
-  ref           String?
+  patientName   String
+  patientEmail  String? // ✅ Needed for PDF
+  refNo         String? // ✅ Needed for PDF
   status        String         @default("Active")
-  appointments  Appointment[]
+  date          DateTime
   prescriptions Prescription[]
 }
 
-model Appointment {
-  id        Int      @id @default(autoincrement())
-  sessionId Int
-  doctorId  Int
-  patientId Int
-  status    String   @default("Scheduled")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  doctor  Doctor  @relation("DoctorAppointments", fields: [doctorId], references: [id])
-  patient Patient @relation(fields: [patientId], references: [id])
-  session Session @relation(fields: [sessionId], references: [id])
+model Prescription {
+  id            Int               @id @default(autoincrement())
+  appointmentId Int
+  appointment   Appointment       @relation(fields: [appointmentId], references: [id])
+  createdAt     DateTime          @default(now())
+  medicines     PrescriptionMed[] // ✅ Relation to medicines
 }
 
-model Prescription {
-  id        Int                      @id @default(autoincrement())
-  patientId Int
-  createdAt DateTime                 @default(now())
-  medicines MedicineOnPrescription[]
-  patient   Patient                  @relation(fields: [patientId], references: [id])
+model PrescriptionMed {
+  id             Int          @id @default(autoincrement())
+  prescriptionId Int
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id])
+  medicineName   String
+  dosage         String?
+  frequency      String?
+  duration       String?
+  specialNote    String? // ✅ Add this field (controller uses it)
+  isFavorite     Boolean      @default(false) // ✅ Add this too (controller uses it)
 }
 
 model Medicine {
-  id            Int                      @id @default(autoincrement())
-  name          String                   @unique
-  dosage        String?
-  frequency     String?
-  instructions  String?
-  favorites     Boolean                  @default(false)
-  prescriptions MedicineOnPrescription[]
-}
-
-model MedicineOnPrescription {
-  id             Int          @id @default(autoincrement())
-  prescriptionId Int
-  medicineId     Int
-  dosage         String
-  frequency      String
-  period         String
-  specialNote    String?
-  medicine       Medicine     @relation(fields: [medicineId], references: [id])
-  prescription   Prescription @relation(fields: [prescriptionId], references: [id])
+  id            Int      @id @default(autoincrement())
+  name          String
+  defaultDosage String?
+  defaultFreq   String?
+  defaultDur    String?
+  createdAt     DateTime @default(now())
 }
