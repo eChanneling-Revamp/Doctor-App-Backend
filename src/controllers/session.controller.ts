@@ -31,7 +31,7 @@
 
 
 import { Request, Response } from "express";
-import prisma from "../config/prisma";
+import { prisma } from "../config/prisma";
 
 export async function createSession(req: Request, res: Response) {
   try {

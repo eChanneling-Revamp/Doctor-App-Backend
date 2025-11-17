@@ -1,6 +1,6 @@
 
 import { Request, Response } from "express";
-import prisma from "../config/prisma"; // ✅ your PrismaClient instance
+import { prisma } from "../config/prisma";  // ✅ your PrismaClient instance
 
 // ✅ Create Prescription
 export const createPrescription = async (req: Request, res: Response) => {
