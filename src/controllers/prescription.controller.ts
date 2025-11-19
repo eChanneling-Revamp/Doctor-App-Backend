@@ -113,10 +113,25 @@ export const createPrescription = async (req: Request, res: Response) => {
 };
 
 /* ------------------ ADD MEDICINE TO PRESCRIPTION ------------------ */
+
 export const addMedicineToPrescription = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { medicineName, dosage, frequency, duration, specialNote, isFavorite } = req.body;
+
+    // Validate required fields
+    if (!medicineName) {
+      return res.status(400).json({ error: "medicineName is required" });
+    }
+
+    // Check prescription exists
+    const prescription = await prisma.prescription.findUnique({
+      where: { id: Number(id) }
+    });
+
+    if (!prescription) {
+      return res.status(404).json({ error: "Prescription not found" });
+    }
 
     const med = await prisma.prescriptionMed.create({
       data: {
@@ -130,31 +145,20 @@ export const addMedicineToPrescription = async (req: Request, res: Response) => 
       },
     });
 
-    res.json(med);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Failed to add medicine to prescription" });
-  }
+    return res.json(med);
+
+ } catch (error: any) {
+  console.error("Add Medicine Error:", error);
+  return res.status(500).json({
+    error: "Failed to add medicine to prescription",
+    details: error.message,
+  });
+}
+
 };
 
-/* ------------------ UPDATE MEDICINE ------------------ 
-export const updateMedicineInPrescription = async (req: Request, res: Response) => {
-  try {
-    const { medId } = req.params;
-    const { dosage, frequency, duration, specialNote } = req.body;
+/* ------------------ UPDATE MEDICINE ------------------ */
 
-    const med = await prisma.prescriptionMed.update({
-      where: { id: Number(medId) },
-      data: { dosage, frequency, duration, specialNote: specialNote ?? null },
-    });
-
-    res.json(med);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Failed to update medicine" });
-  }
-};
-*/
 export const updateMedicineInPrescription = async (req: Request, res: Response) => {
   try {
     const { medId } = req.params;

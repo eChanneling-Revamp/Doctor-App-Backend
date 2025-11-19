@@ -22,9 +22,9 @@ router.get("/appointments/:id", viewAppointmentDetails);
 
 // Medicines
 router.get("/medicines", searchMedicines);
-//router.put("/medicine/:medId", updateMedicineInPrescription);
+router.put("/medicine/:medId", updateMedicineInPrescription);
 router.delete("/medicine/:medId", deleteMedicineFromPrescription);
-router.put("/:id/medicines/:medId", updateMedicineInPrescription);
+//router.put("/:id/medicines/:medId", updateMedicineInPrescription);
 
 router.post("/favorites", addFavoriteMedicine);
 router.delete("/favorites/:id", removeFavoriteMedicine);
