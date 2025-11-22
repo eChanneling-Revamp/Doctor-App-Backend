@@ -7,41 +7,148 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Appointment {
-  id            Int            @id @default(autoincrement())
-  patientName   String
-  patientEmail  String? // ✅ Needed for PDF
-  refNo         String? // ✅ Needed for PDF
-  status        String         @default("Active")
-  date          DateTime
+////////////////////////////////////////////////////////////
+// DOCTOR
+////////////////////////////////////////////////////////////
+
+model Doctor {
+  id    Int    @id @default(autoincrement())
+  name  String
+  email String @unique
+
+  sessions     Session[]
+  appointments Appointment[] @relation("DoctorAppointments")
+  schedules    Schedule[]
+}
+
+////////////////////////////////////////////////////////////
+// PATIENT
+////////////////////////////////////////////////////////////
+
+model Patient {
+  id        Int     @id @default(autoincrement())
+  name      String
+  email     String? @unique
+  age       Int?
+  patientId String? @unique
+  ref       String?
+  status    String  @default("Active")
+
+  appointments  Appointment[]
   prescriptions Prescription[]
 }
 
+////////////////////////////////////////////////////////////
+// SESSION
+////////////////////////////////////////////////////////////
+
+model Session {
+  id              Int      @id @default(autoincrement())
+  doctorId        Int
+  hospitalName    String
+  patientCapacity Int
+  startTime       DateTime
+  endTime         DateTime
+  sessionType     String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  doctor       Doctor        @relation(fields: [doctorId], references: [id])
+  appointments Appointment[]
+}
+
+////////////////////////////////////////////////////////////
+// APPOINTMENT  (Updated & Correct)
+////////////////////////////////////////////////////////////
+
+model Appointment {
+  id        Int      @id @default(autoincrement())
+  sessionId Int
+  doctorId  Int
+  patientId Int
+  status    String   @default("Scheduled")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  doctor  Doctor  @relation("DoctorAppointments", fields: [doctorId], references: [id])
+  patient Patient @relation(fields: [patientId], references: [id])
+  session Session @relation(fields: [sessionId], references: [id])
+
+  prescriptions Prescription[]
+}
+
+////////////////////////////////////////////////////////////
+// PRESCRIPTION SYSTEM
+////////////////////////////////////////////////////////////
+
 model Prescription {
-  id            Int               @id @default(autoincrement())
+  id            Int      @id @default(autoincrement())
   appointmentId Int
-  appointment   Appointment       @relation(fields: [appointmentId], references: [id])
-  createdAt     DateTime          @default(now())
-  medicines     PrescriptionMed[] // ✅ Relation to medicines
+  patientId     Int?
+  createdAt     DateTime @default(now())
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id])
+  patient     Patient?    @relation(fields: [patientId], references: [id])
+
+  medicines PrescriptionMed[]
 }
 
 model PrescriptionMed {
   id             Int          @id @default(autoincrement())
   prescriptionId Int
   prescription   Prescription @relation(fields: [prescriptionId], references: [id])
-  medicineName   String
-  dosage         String?
-  frequency      String?
-  duration       String?
-  specialNote    String? // ✅ Add this field (controller uses it)
-  isFavorite     Boolean      @default(false) // ✅ Add this too (controller uses it)
+
+  medicineName String
+  dosage       String?
+  frequency    String?
+  duration     String?
+  specialNote  String?
+  isFavorite   Boolean @default(false)
 }
 
 model Medicine {
   id            Int      @id @default(autoincrement())
-  name          String
+  name          String   @unique
   defaultDosage String?
   defaultFreq   String?
   defaultDur    String?
   createdAt     DateTime @default(now())
+}
+
+////////////////////////////////////////////////////////////
+// SCHEDULE & SLOTS
+////////////////////////////////////////////////////////////
+
+model Schedule {
+  id          Int    @id @default(autoincrement())
+  doctorId    Int
+  location    String
+  workingDays Json
+  startTime   String
+  endTime     String
+
+  doctor Doctor @relation(fields: [doctorId], references: [id])
+  slots  Slot[]
+}
+
+model Slot {
+  id         Int      @id @default(autoincrement())
+  scheduleId Int
+  date       DateTime
+  time       String
+  isBooked   Boolean  @default(false)
+
+  schedule    Schedule         @relation(fields: [scheduleId], references: [id])
+  appointment SlotAppointment?
+}
+
+model SlotAppointment {
+  id          Int      @id @default(autoincrement())
+  slotId      Int      @unique
+  patientName String
+  type        String // Teleconsult / In-Person
+  status      String   @default("Pending")
+  createdAt   DateTime @default(now())
+
+  slot Slot @relation(fields: [slotId], references: [id])
 }
