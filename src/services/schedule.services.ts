@@ -13,6 +13,7 @@ class ScheduleService {
         workingDays: workingDays as any,
         startTime,
         endTime,
+        date: new Date(),
       },
     });
 

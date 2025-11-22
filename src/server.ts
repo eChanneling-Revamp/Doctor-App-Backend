@@ -3,7 +3,9 @@ import cors from "cors";
 import dotenv from "dotenv";
 import { PrismaClient } from "@prisma/client";
 import prescriptionRoutes from "./routes/prescription.routes";
-
+import sessionRoutes from "./routes/session.routes";
+import scheduleRoutes from "./routes/schedule.routes";
+import slotRoutes from "./routes/slot.routes";
 dotenv.config();
 
 const app = express();
@@ -14,6 +16,13 @@ app.use(express.json());
 
 // ✅ Connect the session routes
 app.use("/api/prescriptions",prescriptionRoutes);
+app.use("/api/sessions", sessionRoutes);
+app.use("/api/schedules", scheduleRoutes);
+app.use("/api/slots", slotRoutes);
+
+
+
+
 // Root route
 app.get("/", (req, res) => {
   res.send("Doctor Appointment Backend Running with Prisma + PostgreSQL (TypeScript)");
