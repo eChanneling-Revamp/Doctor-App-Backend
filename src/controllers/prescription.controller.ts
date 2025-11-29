@@ -5,8 +5,9 @@ import fs from "fs";
 import path from "path";
 import nodemailer from "nodemailer";
 
-  //==================  SEARCH ACTIVE APPOINTMENTS
-
+/* =======================================================
+    SEARCH ACTIVE APPOINTMENTS
+========================================================== */
 export const searchActiveAppointments = async (req: Request, res: Response) => {
   try {
     const query =
@@ -37,9 +38,9 @@ export const searchActiveAppointments = async (req: Request, res: Response) => {
   }
 };
 
-
-  //================  VIEW APPOINTMENT DETAILS
-
+/* =======================================================
+    VIEW APPOINTMENT DETAILS
+========================================================== */
 export const viewAppointmentDetails = async (req: Request, res: Response) => {
   try {
     const appointment = await prisma.appointment.findUnique({
@@ -57,8 +58,9 @@ export const viewAppointmentDetails = async (req: Request, res: Response) => {
   }
 };
 
-
-   //============== SEARCH MEDICINES
+/* =======================================================
+    SEARCH MEDICINES
+========================================================== */
 export const searchMedicines = async (req: Request, res: Response) => {
   try {
     const search = typeof req.query.search === "string" ? req.query.search : "";
@@ -74,8 +76,9 @@ export const searchMedicines = async (req: Request, res: Response) => {
   }
 };
 
-  //================  ADD FAVORITE MEDICINE
- 
+/* =======================================================
+    ADD FAVORITE MEDICINE
+========================================================== */
 export const addFavoriteMedicine = async (req: Request, res: Response) => {
   try {
     const { name, dosage, frequency, duration } = req.body;
@@ -96,9 +99,9 @@ export const addFavoriteMedicine = async (req: Request, res: Response) => {
   }
 };
 
-
-  //===============  REMOVE FAVORITE MEDICINE
- 
+/* =======================================================
+    REMOVE FAVORITE MEDICINE
+========================================================== */
 export const removeFavoriteMedicine = async (req: Request, res: Response) => {
   try {
     await prisma.medicine.delete({ where: { id: Number(req.params.id) } });
@@ -109,9 +112,9 @@ export const removeFavoriteMedicine = async (req: Request, res: Response) => {
   }
 };
 
-
-   //=============== CREATE PRESCRIPTION
- 
+/* =======================================================
+    CREATE PRESCRIPTION
+========================================================== */
 
 export const createPrescription = async (req: Request, res: Response) => {
   try {
@@ -142,8 +145,9 @@ export const createPrescription = async (req: Request, res: Response) => {
   }
 };
 
-
-   //=============== ADD MEDICINE TO PRESCRIPTION
+/* =======================================================
+    ADD MEDICINE TO PRESCRIPTION
+========================================================== */
 export const addMedicineToPrescription = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -183,8 +187,9 @@ export const addMedicineToPrescription = async (req: Request, res: Response) => 
   }
 };
 
-//===================    UPDATE MEDICINE
- 
+/* =======================================================
+    UPDATE MEDICINE
+========================================================== */
 export const updateMedicineInPrescription = async (req: Request, res: Response) => {
   try {
     const { medId } = req.params;
@@ -217,9 +222,9 @@ export const updateMedicineInPrescription = async (req: Request, res: Response) 
   }
 };
 
-
- //========================   DELETE MEDICINE
-
+/* =======================================================
+    DELETE MEDICINE
+========================================================== */
 export const deleteMedicineFromPrescription = async (req: Request, res: Response) => {
   try {
     await prisma.prescriptionMed.delete({ where: { id: Number(req.params.medId) } });
@@ -230,9 +235,9 @@ export const deleteMedicineFromPrescription = async (req: Request, res: Response
   }
 };
 
-
-   //=================== TOGGLE FAVORITE
-
+/* =======================================================
+    TOGGLE FAVORITE
+========================================================== */
 export const toggleFavoriteMedicine = async (req: Request, res: Response) => {
   try {
     const { medId } = req.params;
@@ -249,8 +254,9 @@ export const toggleFavoriteMedicine = async (req: Request, res: Response) => {
   }
 };
 
-
-  //=========================  GENERATE PRESCRIPTION PDF
+/* =======================================================
+    GENERATE PRESCRIPTION PDF
+========================================================== 
 export const sharePrescription = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
@@ -313,10 +319,76 @@ export const sharePrescription = async (req: Request, res: Response) => {
     console.error(error);
     res.status(500).json({ error: "Failed to generate PDF" });
   }
+};*/
+export const generatePrescriptionPDF = async (req: Request, res: Response) => {
+  try {
+    const { prescriptionId } = req.params;
+
+    if (!prescriptionId) {
+      return res.status(400).json({ error: "Prescription ID is required." });
+    }
+
+    // Convert string → number
+    const id = Number(prescriptionId);
+
+    // Validate numeric id
+    if (isNaN(id)) {
+      return res.status(400).json({ error: "Invalid prescription ID format." });
+    }
+
+    const prescription = await prisma.prescription.findUnique({
+      where: { id }, // ✔ number
+      include: {
+        appointment: {
+          include: { patient: true }
+        },
+        medicines: true
+      }
+    });
+
+    if (!prescription)
+      return res.status(404).json({ error: "Prescription not found" });
+
+    const doc = new PDFDocument();
+    res.setHeader("Content-Type", "application/pdf");
+    doc.pipe(res);
+
+    doc.fontSize(16).text("Prescription", { underline: true });
+    doc.moveDown();
+    doc.fontSize(12);
+
+    doc.text(`Patient: ${prescription.appointment.patient.name}`);
+    doc.text(`Email: ${prescription.appointment.patient.email}`);
+    doc.text(`Ref: ${prescription.appointment.id}`);
+    doc.moveDown();
+
+    // Format medicines properly
+    if (prescription.medicines.length > 0) {
+      doc.text("Medicines:");
+      prescription.medicines.forEach((m, i) => {
+        doc.text(`${i + 1}. ${m.medicineName} - ${m.dosage}`);
+      });
+    } else {
+      doc.text("Medicines: None");
+    }
+
+    doc.moveDown();
+doc.text("Notes:");
+prescription.medicines.forEach((m, i) => {
+  if (m.specialNote) {
+    doc.text(`${i + 1}. ${m.specialNote}`);
+  }
+});
+    doc.end();
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to generate PDF." });
+  }
 };
 
-//================    SEND PRESCRIPTION TO EMAIL
- 
+/* =======================================================
+    SEND PRESCRIPTION TO EMAIL
+========================================================== */
 export const sendToPatient = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;

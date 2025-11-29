@@ -10,7 +10,7 @@ import {
   updateMedicineInPrescription,
   deleteMedicineFromPrescription,
   toggleFavoriteMedicine,
-  sharePrescription,
+  
   sendToPatient
 } from "../controllers/prescription.controller";
 
@@ -37,7 +37,7 @@ router.delete("/:id/medicines/:medId", deleteMedicineFromPrescription);
 router.patch("/favorite/:medId", toggleFavoriteMedicine);
 
 // Share and Send
-router.post("/:id/share", sharePrescription);
+
 router.post("/:id/send", sendToPatient);
 
 export default router;

@@ -86,7 +86,7 @@ model Prescription {
   appointmentId Int
   patientId     Int?
   createdAt     DateTime @default(now())
-
+  note          String?
   appointment Appointment @relation(fields: [appointmentId], references: [id])
   patient     Patient?    @relation(fields: [patientId], references: [id])
 
@@ -126,7 +126,7 @@ model Schedule {
   workingDays Json
   startTime   String
   endTime     String
-
+ date        DateTime @default(now())
   doctor Doctor @relation(fields: [doctorId], references: [id])
   slots  Slot[]
 }
