@@ -15,7 +15,7 @@ export const searchActiveAppointments = async (req: Request, res: Response) => {
 
     const appointments = await prisma.appointment.findMany({
       where: {
-        status: "Scheduled",  // or "Active" if that is your status
+        status: "Scheduled",
         patient: {
           name: {
             contains: query,
@@ -115,7 +115,6 @@ export const removeFavoriteMedicine = async (req: Request, res: Response) => {
 /* =======================================================
     CREATE PRESCRIPTION
 ========================================================== */
-
 export const createPrescription = async (req: Request, res: Response) => {
   try {
     const { appointmentId } = req.body;
@@ -123,7 +122,6 @@ export const createPrescription = async (req: Request, res: Response) => {
     if (!appointmentId)
       return res.status(400).json({ error: "appointmentId is required" });
 
-    // Get appointment so we know patientId
     const appointment = await prisma.appointment.findUnique({
       where: { id: Number(appointmentId) },
     });
@@ -134,7 +132,7 @@ export const createPrescription = async (req: Request, res: Response) => {
     const prescription = await prisma.prescription.create({
       data: {
         appointmentId,
-        patientId: appointment.patientId, // FIXED
+        patientId: appointment.patientId,
       },
     });
 
@@ -151,7 +149,8 @@ export const createPrescription = async (req: Request, res: Response) => {
 export const addMedicineToPrescription = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { medicineName, dosage, frequency, duration, specialNote, isFavorite } = req.body;
+    const { medicineName, dosage, frequency, duration, specialNote, isFavorite } =
+      req.body;
 
     if (!medicineName) {
       return res.status(400).json({ error: "medicineName is required" });
@@ -188,7 +187,7 @@ export const addMedicineToPrescription = async (req: Request, res: Response) => 
 };
 
 /* =======================================================
-    UPDATE MEDICINE
+    UPDATE MEDICINE IN PRESCRIPTION
 ========================================================== */
 export const updateMedicineInPrescription = async (req: Request, res: Response) => {
   try {
@@ -255,95 +254,23 @@ export const toggleFavoriteMedicine = async (req: Request, res: Response) => {
 };
 
 /* =======================================================
-    GENERATE PRESCRIPTION PDF
-========================================================== 
-export const sharePrescription = async (req: Request, res: Response) => {
-  try {
-    const id = Number(req.params.id);
-
-    const prescription = await prisma.prescription.findUnique({
-      where: { id },
-      include: {
-        medicines: true,
-        appointment: {
-          include: { patient: true }, // include patient
-        },
-      },
-    });
-
-    if (!prescription) {
-      return res.status(404).json({ error: "Prescription not found" });
-    }
-
-    // Handle case when appointment or patient is missing
-    const patient = prescription.appointment?.patient;
-    if (!prescription.appointment || !patient) {
-      return res
-        .status(400)
-        .json({ error: "Prescription has no linked appointment or patient" });
-    }
-
-    const pdfPath = path.join(__dirname, `../../prescription_${id}.pdf`);
-    const doc = new PDFDocument({ margin: 50 });
-    const stream = fs.createWriteStream(pdfPath);
-
-    doc.pipe(stream);
-
-    doc.fontSize(20).text("Healthy Life Clinic", { align: "center" });
-    doc.fontSize(14).text(`Prescription ID: ${prescription.id}`, { align: "center" });
-    doc.moveDown();
-
-    doc.text(`Patient: ${patient.name}`);
-    doc.text(`Email: ${patient.email ?? "N/A"}`);
-    doc.text(`Patient ID: ${patient.patientId ?? "N/A"}`);
-    doc.text(`Ref: ${patient.ref ?? "N/A"}`);
-
-    doc.moveDown();
-    doc.fontSize(14).text("Prescription Details", { underline: true });
-
-    prescription.medicines.forEach((m, i) => {
-      doc.moveDown();
-      doc.text(`${i + 1}. ${m.medicineName}`);
-      doc.text(`   Dosage: ${m.dosage ?? "N/A"}`);
-      doc.text(`   Frequency: ${m.frequency ?? "N/A"}`);
-      doc.text(`   Duration: ${m.duration ?? "N/A"}`);
-      if (m.specialNote) doc.text(`   Note: ${m.specialNote}`);
-    });
-
-    doc.end();
-
-    stream.on("finish", () =>
-      res.json({ message: "PDF generated", pdfPath })
-    );
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Failed to generate PDF" });
-  }
-};*/
+    GENERATE PRESCRIPTION PDF (FIXED)
+========================================================== */
 export const generatePrescriptionPDF = async (req: Request, res: Response) => {
   try {
     const { prescriptionId } = req.params;
 
-    if (!prescriptionId) {
-      return res.status(400).json({ error: "Prescription ID is required." });
-    }
-
-    // Convert string → number
     const id = Number(prescriptionId);
-
-    // Validate numeric id
     if (isNaN(id)) {
       return res.status(400).json({ error: "Invalid prescription ID format." });
     }
 
     const prescription = await prisma.prescription.findUnique({
-      where: { id }, // ✔ number
+      where: { id },
       include: {
-        appointment: {
-          include: { patient: true }
-        },
-        medicines: true
-      }
+        appointment: { include: { patient: true } },
+        medicines: true,
+      },
     });
 
     if (!prescription)
@@ -355,30 +282,31 @@ export const generatePrescriptionPDF = async (req: Request, res: Response) => {
 
     doc.fontSize(16).text("Prescription", { underline: true });
     doc.moveDown();
-    doc.fontSize(12);
 
     doc.text(`Patient: ${prescription.appointment.patient.name}`);
     doc.text(`Email: ${prescription.appointment.patient.email}`);
     doc.text(`Ref: ${prescription.appointment.id}`);
     doc.moveDown();
 
-    // Format medicines properly
     if (prescription.medicines.length > 0) {
       doc.text("Medicines:");
-      prescription.medicines.forEach((m, i) => {
-        doc.text(`${i + 1}. ${m.medicineName} - ${m.dosage}`);
-      });
+      prescription.medicines.forEach(
+        (m: any, i: number) => {
+          doc.text(`${i + 1}. ${m.medicineName} - ${m.dosage ?? "N/A"}`);
+        }
+      );
     } else {
       doc.text("Medicines: None");
     }
 
     doc.moveDown();
-doc.text("Notes:");
-prescription.medicines.forEach((m, i) => {
-  if (m.specialNote) {
-    doc.text(`${i + 1}. ${m.specialNote}`);
-  }
-});
+    doc.text("Notes:");
+    prescription.medicines.forEach((m: any, i: number) => {
+      if (m.specialNote) {
+        doc.text(`${i + 1}. ${m.specialNote}`);
+      }
+    });
+
     doc.end();
   } catch (error) {
     console.error(error);
@@ -398,10 +326,7 @@ export const sendToPatient = async (req: Request, res: Response) => {
 
     const transporter = nodemailer.createTransport({
       service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
+      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
     });
 
     await transporter.sendMail({
@@ -413,7 +338,6 @@ export const sendToPatient = async (req: Request, res: Response) => {
     });
 
     fs.unlinkSync(filePath);
-
     res.json({ message: "Prescription sent!" });
   } catch (error) {
     console.error(error);

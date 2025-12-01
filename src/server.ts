@@ -2,10 +2,13 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { PrismaClient } from "@prisma/client";
+
 import prescriptionRoutes from "./routes/prescription.routes";
 import sessionRoutes from "./routes/session.routes";
 import scheduleRoutes from "./routes/schedule.routes";
 import slotRoutes from "./routes/slot.routes";
+import appointmentRoutes from "./routes/appointment.routes";  // ✅ ADDED
+
 dotenv.config();
 
 const app = express();
@@ -14,23 +17,20 @@ const prisma = new PrismaClient();
 app.use(cors());
 app.use(express.json());
 
-// ✅ Connect the session routes
-app.use("/api/prescriptions",prescriptionRoutes);
+// Routes
+app.use("/api/prescriptions", prescriptionRoutes);
 app.use("/api/sessions", sessionRoutes);
 app.use("/api/schedules", scheduleRoutes);
 app.use("/api/slots", slotRoutes);
+app.use("/api/appointments", appointmentRoutes);   // ✅ FIXED
 
-
-
-
-// Root route
+// Root
 app.get("/", (req, res) => {
   res.send("Doctor Appointment Backend Running with Prisma + PostgreSQL (TypeScript)");
 });
 
 const PORT = process.env.PORT || 5000;
 
-// ✅ Function to connect DB + start server
 async function startServer() {
   try {
     await prisma.$connect();
@@ -41,9 +41,8 @@ async function startServer() {
     });
   } catch (error) {
     console.error("❌ Failed to connect to the database:", error);
-    process.exit(1); // Stop the server if DB connection fails
+    process.exit(1);
   }
 }
 
 startServer();
-
