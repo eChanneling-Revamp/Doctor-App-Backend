@@ -75,6 +75,26 @@ export const searchMedicines = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Failed to search medicines" });
   }
 };
+/* =======================================================
+    VIEW MEDICINE DETAILS
+========================================================== */
+
+export const viewMedicineDetails = async (req: Request, res: Response) => {
+  try {
+    const medId = Number(req.params.medId);
+    if (isNaN(medId)) return res.status(400).json({ error: "Invalid medicine ID" });
+
+    const medicine = await prisma.medicine.findUnique({ where: { id: medId } });
+
+    if (!medicine) return res.status(404).json({ error: "Medicine not found" });
+
+    res.json(medicine);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to fetch medicine details" });
+  }
+};
+
 
 /* =======================================================
     ADD FAVORITE MEDICINE
@@ -115,28 +135,40 @@ export const removeFavoriteMedicine = async (req: Request, res: Response) => {
 /* =======================================================
     CREATE PRESCRIPTION
 ========================================================== */
+
 export const createPrescription = async (req: Request, res: Response) => {
   try {
     const { appointmentId } = req.body;
 
-    if (!appointmentId)
+    if (!appointmentId) {
       return res.status(400).json({ error: "appointmentId is required" });
+    }
 
+    const id = Number(appointmentId);
+
+    // Check if appointment exists
     const appointment = await prisma.appointment.findUnique({
-      where: { id: Number(appointmentId) },
+      where: { id },
     });
 
-    if (!appointment)
+    if (!appointment) {
       return res.status(404).json({ error: "Appointment not found" });
+    }
 
+    if (!appointment.patientId) {
+      return res.status(400).json({ error: "Appointment has no patient assigned" });
+    }
+
+    // Create prescription
     const prescription = await prisma.prescription.create({
       data: {
-        appointmentId,
+        appointmentId: id,
         patientId: appointment.patientId,
       },
     });
 
     res.json(prescription);
+
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Failed to create prescription" });

@@ -1,18 +1,23 @@
 import { Router } from "express";
 import {
-  createSchedule,
-  updateSchedule,
-  getDoctorSchedules,
-  getScheduleById,
-  regenerateSlots,
-} from "../controllers/schedule.controller";
+  createSession,
+  listSessions,
+  updateSession,
+  deleteSession,
+} from "../controllers/session.controller";
 
 const router = Router();
 
-router.post("/", createSchedule);
-router.put("/:id", updateSchedule);
-router.get("/doctor/:doctorId", getDoctorSchedules);
-router.get("/:id", getScheduleById);
-router.post("/:id/regenerate", regenerateSlots);
+// CREATE SESSION
+router.post("/", createSession);
+
+// LIST ALL SESSIONS (Optionally filter by doctorId)
+router.get("/", listSessions);
+
+// UPDATE SESSION
+router.put("/:id", updateSession);
+
+// DELETE SESSION
+router.delete("/:id", deleteSession);
 
 export default router;

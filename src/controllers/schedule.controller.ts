@@ -87,7 +87,10 @@ export const getScheduleById = async (req: Request, res: Response) => {
 };
 
 // -------------------- Regenerate Slots for next 7 days --------------------
-export const regenerateSlots = async (req: Request, res: Response) => {
+
+
+
+/*export const regenerateSlots = async (req: Request, res: Response) => {
   try {
     const scheduleId = Number(req.params.id);
 
@@ -97,6 +100,35 @@ export const regenerateSlots = async (req: Request, res: Response) => {
 
     res.json({ message: "Slots regenerated successfully" });
   } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};
+*/
+
+export const regenerateSlots = async (req: Request, res: Response) => {
+  try {
+    const scheduleId = Number(req.params.id);
+
+    //  Delete appointments under this schedule
+    await prisma.slotAppointment.deleteMany({
+      where: {
+        slot: {
+          scheduleId: scheduleId,
+        },
+      },
+    });
+
+    //  Delete slots
+    await prisma.slot.deleteMany({
+      where: { scheduleId },
+    });
+
+    //  Generate fresh slots
+    await generateSlotsForSchedule(scheduleId);
+
+    res.json({ message: "Slots regenerated successfully" });
+  } catch (err: any) {
+    console.error(err);
     res.status(500).json({ error: err.message });
   }
 };

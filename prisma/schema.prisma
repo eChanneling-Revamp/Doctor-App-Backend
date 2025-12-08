@@ -63,7 +63,7 @@ model Session {
 
 model Appointment {
   id        Int      @id @default(autoincrement())
-  sessionId Int
+  sessionId Int?
   doctorId  Int
   patientId Int
   status    String   @default("Scheduled")
@@ -72,7 +72,7 @@ model Appointment {
 
   doctor  Doctor  @relation("DoctorAppointments", fields: [doctorId], references: [id])
   patient Patient @relation(fields: [patientId], references: [id])
-  session Session @relation(fields: [sessionId], references: [id])
+  session Session? @relation(fields: [sessionId], references: [id])
 
   prescriptions Prescription[]
 }

@@ -3,6 +3,7 @@ import {
   searchActiveAppointments,
   viewAppointmentDetails,
   searchMedicines,
+  viewMedicineDetails,
   addFavoriteMedicine,
   removeFavoriteMedicine,
   createPrescription,
@@ -22,7 +23,9 @@ router.get("/appointments/:id", viewAppointmentDetails);
 
 // Medicines
 router.get("/medicines", searchMedicines);
-//router.put("/medicine/:medId", updateMedicineInPrescription);
+// View single medicine details
+router.get("/medicine/:medId", viewMedicineDetails);
+
 router.delete("/medicine/:medId", deleteMedicineFromPrescription);
 router.put("/:id/medicines/:medId", updateMedicineInPrescription);
 
