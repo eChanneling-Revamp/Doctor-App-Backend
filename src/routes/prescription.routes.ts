@@ -12,7 +12,8 @@ import {
   deleteMedicineFromPrescription,
   toggleFavoriteMedicine,
   
-  sendToPatient
+   generatePrescriptionPDF,
+  sendToPatient,
 } from "../controllers/prescription.controller";
 
 const router = express.Router();
@@ -40,7 +41,8 @@ router.delete("/:id/medicines/:medId", deleteMedicineFromPrescription);
 router.patch("/favorite/:medId", toggleFavoriteMedicine);
 
 // Share and Send
-
+router.get("/prescriptions/:prescriptionId/pdf", generatePrescriptionPDF);
 router.post("/:id/send", sendToPatient);
+
 
 export default router;

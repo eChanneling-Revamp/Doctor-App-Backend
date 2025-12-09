@@ -4,7 +4,6 @@ import PDFDocument from "pdfkit";
 import fs from "fs";
 import path from "path";
 import nodemailer from "nodemailer";
-
 /* =======================================================
     SEARCH ACTIVE APPOINTMENTS
 ========================================================== */
@@ -288,11 +287,12 @@ export const toggleFavoriteMedicine = async (req: Request, res: Response) => {
 /* =======================================================
     GENERATE PRESCRIPTION PDF (FIXED)
 ========================================================== */
+
 export const generatePrescriptionPDF = async (req: Request, res: Response) => {
   try {
     const { prescriptionId } = req.params;
-
     const id = Number(prescriptionId);
+
     if (isNaN(id)) {
       return res.status(400).json({ error: "Invalid prescription ID format." });
     }
@@ -300,7 +300,12 @@ export const generatePrescriptionPDF = async (req: Request, res: Response) => {
     const prescription = await prisma.prescription.findUnique({
       where: { id },
       include: {
-        appointment: { include: { patient: true } },
+        appointment: {
+          include: {
+            patient: true,
+            doctor: true, // assuming doctor relation exists
+          },
+        },
         medicines: true,
       },
     });
@@ -308,36 +313,64 @@ export const generatePrescriptionPDF = async (req: Request, res: Response) => {
     if (!prescription)
       return res.status(404).json({ error: "Prescription not found" });
 
-    const doc = new PDFDocument();
+    const doc = new PDFDocument({ margin: 50, size: "A4" });
     res.setHeader("Content-Type", "application/pdf");
     doc.pipe(res);
 
-    doc.fontSize(16).text("Prescription", { underline: true });
-    doc.moveDown();
+    // Header
+    doc.fontSize(20).text("Your Hospital Name", { align: "center" });
+    doc.moveDown(0.5);
+    doc.fontSize(12).text(`Date: ${new Date().toLocaleDateString()}`, { align: "right" });
+    doc.moveDown(1);
 
+    // Doctor & Patient Info
+    doc.fontSize(14).text("Prescription", { underline: true, align: "center" });
+    doc.moveDown();
+    doc.fontSize(12).text(`Doctor: ${prescription.appointment.doctor?.name ?? "N/A"}`);
     doc.text(`Patient: ${prescription.appointment.patient.name}`);
     doc.text(`Email: ${prescription.appointment.patient.email}`);
-    doc.text(`Ref: ${prescription.appointment.id}`);
+    doc.text(`Appointment Ref: ${prescription.appointment.id}`);
     doc.moveDown();
 
-    if (prescription.medicines.length > 0) {
-      doc.text("Medicines:");
-      prescription.medicines.forEach(
-        (m: any, i: number) => {
-          doc.text(`${i + 1}. ${m.medicineName} - ${m.dosage ?? "N/A"}`);
-        }
-      );
-    } else {
-      doc.text("Medicines: None");
-    }
+    // Medicines Table Header
+    doc.fontSize(12).text("Medicines:", { underline: true });
+    doc.moveDown(0.5);
 
-    doc.moveDown();
-    doc.text("Notes:");
+    const tableTop = doc.y;
+    const itemSpacing = 20;
+
+    // Table Columns
+    const col1 = 50;   // Medicine Name
+    const col2 = 200;  // Dose
+    const col3 = 270;  // Frequency
+    const col4 = 350;  // Duration
+    const col5 = 430;  // Notes
+
+    // Header row
+    doc.font("Helvetica-Bold");
+    doc.text("Medicine Name", col1, tableTop);
+    doc.text("Dose", col2, tableTop);
+    doc.text("Frequency", col3, tableTop);
+    doc.text("Duration", col4, tableTop);
+    doc.text("Notes", col5, tableTop);
+    doc.moveDown(0.5);
+    doc.font("Helvetica");
+
+    // Table rows
     prescription.medicines.forEach((m: any, i: number) => {
-      if (m.specialNote) {
-        doc.text(`${i + 1}. ${m.specialNote}`);
-      }
+      const y = tableTop + (i + 1) * itemSpacing;
+      doc.text(m.medicineName, col1, y);
+      doc.text(m.dosage ?? "N/A", col2, y);
+      doc.text(m.frequency ?? "N/A", col3, y);
+      doc.text(m.duration ?? "N/A", col4, y);
+      doc.text(m.specialNote ?? "", col5, y);
     });
+
+    doc.moveDown(prescription.medicines.length + 1);
+
+    // Footer
+   // doc.moveDown(2);
+   // doc.text("Signature: ______________________", { align: "right" });
 
     doc.end();
   } catch (error) {
@@ -345,6 +378,7 @@ export const generatePrescriptionPDF = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Failed to generate PDF." });
   }
 };
+
 
 /* =======================================================
     SEND PRESCRIPTION TO EMAIL
