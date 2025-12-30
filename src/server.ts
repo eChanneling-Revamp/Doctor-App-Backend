@@ -9,6 +9,10 @@ import scheduleRoutes from "./routes/schedule.routes";
 import slotRoutes from "./routes/slot.routes";
 import appointmentRoutes from "./routes/appointment.routes";  // ✅ ADDED
 
+import authRoutes from "./routes/auth.routes";
+import profileRoutes from "./routes/profile.routes";
+
+import helpRoutes from "./routes/help.routes";
 dotenv.config();
 
 const app = express();
@@ -24,6 +28,10 @@ app.use("/api/schedules", scheduleRoutes);
 app.use("/api/slots", slotRoutes);
 app.use("/api/appointments", appointmentRoutes);   // ✅ FIXED
 
+
+app.use("/api/auth", authRoutes);
+app.use("/api/profile", profileRoutes);
+app.use("/api/help", helpRoutes);
 // Root
 app.get("/", (req, res) => {
   res.send("Doctor Appointment Backend Running with Prisma + PostgreSQL (TypeScript)");

@@ -6,7 +6,33 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+model User {
+  id            Int      @id @default(autoincrement())
+  fullName      String
+  email         String   @unique
+  phone         String   @unique
+  password      String
+  medicalSpec   String?
+  hospital      String?
+  slmcNumber    String?
+  profileImage  String?
+  biometric     Boolean  @default(false)
+  isVerified    Boolean  @default(false)
+  createdAt     DateTime @default(now())
 
+  otps OTP[]
+}
+
+
+model OTP {
+  id        Int      @id @default(autoincrement())
+  code      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id])
+}
 ////////////////////////////////////////////////////////////
 // DOCTOR
 ////////////////////////////////////////////////////////////
