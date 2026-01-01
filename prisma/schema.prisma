@@ -178,3 +178,9 @@ model SlotAppointment {
 
   slot Slot @relation(fields: [slotId], references: [id])
 }
+
+model BlacklistedToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  expiresAt DateTime
+}
