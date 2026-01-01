@@ -88,3 +88,16 @@ export const toggleBiometric = async (req: Request, res: Response) => {
 
   res.json({ message: "Biometric setting updated" });
 };
+
+// UPLOAD IMAGE
+export const uploadImage = async (req: Request, res: Response) => {
+  if (!req.file) {
+    return res.status(400).json({ message: "No file uploaded" });
+  }
+
+  // Construct URL. Assuming server runs on localhost or is configured with a base URL
+  // For simplicity, we return the relative path which the frontend can prepend with base URL
+  const imageUrl = `/uploads/${req.file.filename}`;
+
+  res.json({ imageUrl });
+};

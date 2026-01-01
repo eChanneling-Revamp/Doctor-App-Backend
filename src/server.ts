@@ -13,6 +13,7 @@ import authRoutes from "./routes/auth.routes";
 import profileRoutes from "./routes/profile.routes";
 
 import helpRoutes from "./routes/help.routes";
+import path from "path";
 dotenv.config();
 
 const app = express();
@@ -20,6 +21,9 @@ const prisma = new PrismaClient();
 
 app.use(cors());
 app.use(express.json());
+
+// Serve uploaded files
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 // Routes
 app.use("/api/prescriptions", prescriptionRoutes);
