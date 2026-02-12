@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import prisma from "../config/prisma";
+import ApiError from "../utils/ApiError";
 
 export const authMiddleware = async (
   req: Request,
@@ -10,7 +11,7 @@ export const authMiddleware = async (
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader) {
-      return res.status(401).json({ message: "Unauthorized" });
+      throw new ApiError(401, "Unauthorized");
     }
 
     const token = authHeader.split(" ")[1];
@@ -20,14 +21,18 @@ export const authMiddleware = async (
     });
 
     if (blacklisted) {
-      return res.status(401).json({ message: "Token expired" });
+      throw new ApiError(401, "Token expired");
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!);
-    (req as any).user = decoded;
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET!);
+      (req as any).user = decoded;
+      next();
+    } catch (error) {
+       throw new ApiError(401, "Invalid token");
+    }
 
-    next();
-  } catch {
-    return res.status(401).json({ message: "Invalid token" });
+  } catch (error) {
+    next(error);
   }
 };

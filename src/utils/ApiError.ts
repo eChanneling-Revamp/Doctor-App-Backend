@@ -1,13 +1,25 @@
-// src/utils/ApiError.ts
 export default class ApiError extends Error {
   public statusCode: number;
+  public data: any;
+  public success: boolean;
+  public errors: any[];
 
-  constructor(statusCode: number, message: string) {
+  constructor(
+    statusCode: number,
+    message = "Something went wrong",
+    errors: any[] = [],
+    stack = ""
+  ) {
     super(message);
-    this.name = "ApiError";
     this.statusCode = statusCode;
+    this.data = null;
+    this.success = false;
+    this.errors = errors;
 
-    // Fix for extending built-in Error in TypeScript
-    Object.setPrototypeOf(this, ApiError.prototype);
+    if (stack) {
+      this.stack = stack;
+    } else {
+      Error.captureStackTrace(this, this.constructor);
+    }
   }
 }

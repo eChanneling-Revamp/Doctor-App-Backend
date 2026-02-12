@@ -3,9 +3,12 @@ import prisma from "../config/prisma";
 import { hashPassword, comparePassword } from "../utils/hash";
 import { generateToken } from "../utils/jwt";
 import { generateOTP } from "../utils/otp";
+import { asyncHandler } from "../utils/asyncHandler";
+import ApiError from "../utils/ApiError";
+import jwt from "jsonwebtoken";
 
 // REGISTER
-export const register = async (req: Request, res: Response) => {
+export const register = asyncHandler(async (req: Request, res: Response) => {
   const {
     fullName,
     email,
@@ -20,8 +23,9 @@ export const register = async (req: Request, res: Response) => {
     where: { OR: [{ email }, { phone }] }
   });
 
-  if (exists)
-    return res.status(400).json({ message: "User already exists" });
+  if (exists) {
+    throw new ApiError(400, "User with this email or phone already exists");
+  }
 
   const hashed = await hashPassword(password);
 
@@ -49,26 +53,33 @@ export const register = async (req: Request, res: Response) => {
 
   console.log("SIGNUP OTP:", otp);
 
-  res.json({ message: "Registered successfully. OTP sent." });
-};
+  res.status(201).json({ message: "Registered successfully. OTP sent." });
+});
 
 // LOGIN
-export const login = async (req: Request, res: Response) => {
+export const login = asyncHandler(async (req: Request, res: Response) => {
   const { email, password } = req.body;
 
   const user = await prisma.user.findUnique({ where: { email } });
-  if (!user) return res.status(404).json({ message: "User not found" });
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
 
   const valid = await comparePassword(password, user.password);
-  if (!valid) return res.status(401).json({ message: "Invalid credentials" });
+  if (!valid) {
+    throw new ApiError(401, "Invalid credentials");
+  }
 
   const token = generateToken({ id: user.id });
 
-  res.json({ token, user });
-};
+  // Exclude password
+  const { password: _, ...userWithoutPassword } = user;
+
+  res.json({ token, user: userWithoutPassword });
+});
 
 // FORGOT PASSWORD
-export const forgotPassword = async (req: Request, res: Response) => {
+export const forgotPassword = asyncHandler(async (req: Request, res: Response) => {
   const { emailOrPhone } = req.body;
 
   const user = await prisma.user.findFirst({
@@ -77,7 +88,9 @@ export const forgotPassword = async (req: Request, res: Response) => {
     }
   });
 
-  if (!user) return res.status(404).json({ message: "User not found" });
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
 
   const otp = generateOTP();
 
@@ -92,10 +105,10 @@ export const forgotPassword = async (req: Request, res: Response) => {
   console.log("RESET OTP:", otp);
 
   res.json({ message: "OTP sent" });
-};
+});
 
 // VERIFY OTP
-export const verifyOTP = async (req: Request, res: Response) => {
+export const verifyOTP = asyncHandler(async (req: Request, res: Response) => {
   const { emailOrPhone, code } = req.body;
 
   const user = await prisma.user.findFirst({
@@ -104,7 +117,9 @@ export const verifyOTP = async (req: Request, res: Response) => {
     }
   });
 
-  if (!user) return res.status(404).json({ message: "User not found" });
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
 
   const otp = await prisma.oTP.findFirst({
     where: {
@@ -114,8 +129,9 @@ export const verifyOTP = async (req: Request, res: Response) => {
     }
   });
 
-  if (!otp || otp.expiresAt < new Date())
-    return res.status(400).json({ message: "Invalid OTP" });
+  if (!otp || otp.expiresAt < new Date()) {
+    throw new ApiError(400, "Invalid or expired OTP");
+  }
 
   await prisma.oTP.update({
     where: { id: otp.id },
@@ -123,10 +139,10 @@ export const verifyOTP = async (req: Request, res: Response) => {
   });
 
   res.json({ message: "OTP verified" });
-};
+});
 
 // RESET PASSWORD
-export const resetPassword = async (req: Request, res: Response) => {
+export const resetPassword = asyncHandler(async (req: Request, res: Response) => {
   const { emailOrPhone, newPassword } = req.body;
 
   const user = await prisma.user.findFirst({
@@ -135,7 +151,9 @@ export const resetPassword = async (req: Request, res: Response) => {
     }
   });
 
-  if (!user) return res.status(404).json({ message: "User not found" });
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
 
   const hashed = await hashPassword(newPassword);
 
@@ -145,36 +163,29 @@ export const resetPassword = async (req: Request, res: Response) => {
   });
 
   res.json({ message: "Password reset successful" });
-};
-
-
-import jwt from "jsonwebtoken";
+});
 
 // LOGOUT
-export const logout = async (req: Request, res: Response) => {
-  try {
-    const authHeader = req.headers.authorization;
+export const logout = asyncHandler(async (req: Request, res: Response) => {
+  const authHeader = req.headers.authorization;
 
-    if (!authHeader) {
-      return res.status(400).json({ message: "Token missing" });
-    }
-
-    const token = authHeader.split(" ")[1];
-
-    const decoded: any = jwt.decode(token);
-    if (!decoded?.exp) {
-      return res.status(400).json({ message: "Invalid token" });
-    }
-
-    await prisma.blacklistedToken.create({
-      data: {
-        token,
-        expiresAt: new Date(decoded.exp * 1000)
-      }
-    });
-
-    return res.json({ message: "Logged out successfully" });
-  } catch (error) {
-    return res.status(500).json({ message: "Logout failed" });
+  if (!authHeader) {
+    throw new ApiError(400, "Token missing");
   }
-};
+
+  const token = authHeader.split(" ")[1];
+
+  const decoded: any = jwt.decode(token);
+  if (!decoded?.exp) {
+    throw new ApiError(400, "Invalid token");
+  }
+
+  await prisma.blacklistedToken.create({
+    data: {
+      token,
+      expiresAt: new Date(decoded.exp * 1000)
+    }
+  });
+
+  res.json({ message: "Logged out successfully" });
+});
