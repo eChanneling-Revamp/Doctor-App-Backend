@@ -6,61 +6,69 @@ import { generateOTP } from "../utils/otp";
 import { asyncHandler } from "../utils/asyncHandler";
 import ApiError from "../utils/ApiError";
 import jwt from "jsonwebtoken";
+import { v4 as uuidv4 } from "uuid";
 
 // REGISTER
 export const register = asyncHandler(async (req: Request, res: Response) => {
   const {
-    fullName,
+    name,
     email,
-    phone,
+    contactNumber,
     password,
     medicalSpec,
     hospital,
-    slmcNumber
+    slmcNumber,
+    role
   } = req.body;
 
-  const exists = await prisma.user.findFirst({
-    where: { OR: [{ email }, { phone }] }
+  const exists = await prisma.users.findFirst({
+    where: { OR: [{ email }, { contactNumber }] }
   });
 
   if (exists) {
-    throw new ApiError(400, "User with this email or phone already exists");
+    throw new ApiError(400, "User with this email or contact number already exists");
   }
 
   const hashed = await hashPassword(password);
 
-  const user = await prisma.user.create({
+  const newUser = await prisma.users.create({
     data: {
-      fullName,
+      id: uuidv4(),
+      name,
       email,
-      phone,
+      contactNumber,
       password: hashed,
-      medicalSpec,
+      medicalSpecs: medicalSpec,
       hospital,
-      slmcNumber
+      slmcNumber: slmcNumber ? Number(slmcNumber) : undefined,
+      role: role || "PATIENT",
+      isActive: true, // Default to true, or use OTP flow to activate
+      isEmailVerified: false,
+      updatedAt: new Date(),
     }
   });
 
   const otp = generateOTP();
 
-  await prisma.oTP.create({
+  await prisma.otps.create({
     data: {
+      id: uuidv4(),
       code: otp,
-      userId: user.id,
+      userId: newUser.id,
       expiresAt: new Date(Date.now() + 5 * 60 * 1000)
     }
   });
 
   console.log("SIGNUP OTP:", otp);
 
-  res.status(201).json({ message: "Registered successfully. OTP sent." });
+  res.status(201).json({ message: "Registered successfully. OTP sent.", userId: newUser.id });
 });
 
 // LOGIN
 export const login = asyncHandler(async (req: Request, res: Response) => {
   const { email, password } = req.body;
 
-  const user = await prisma.user.findUnique({ where: { email } });
+  const user = await prisma.users.findUnique({ where: { email } });
   if (!user) {
     throw new ApiError(404, "User not found");
   }
@@ -70,7 +78,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     throw new ApiError(401, "Invalid credentials");
   }
 
-  const token = generateToken({ id: user.id });
+  const token = generateToken({ id: user.id, role: user.role });
 
   // Exclude password
   const { password: _, ...userWithoutPassword } = user;
@@ -82,9 +90,9 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
 export const forgotPassword = asyncHandler(async (req: Request, res: Response) => {
   const { emailOrPhone } = req.body;
 
-  const user = await prisma.user.findFirst({
+  const user = await prisma.users.findFirst({
     where: {
-      OR: [{ email: emailOrPhone }, { phone: emailOrPhone }]
+      OR: [{ email: emailOrPhone }, { contactNumber: emailOrPhone }]
     }
   });
 
@@ -94,8 +102,9 @@ export const forgotPassword = asyncHandler(async (req: Request, res: Response) =
 
   const otp = generateOTP();
 
-  await prisma.oTP.create({
+  await prisma.otps.create({
     data: {
+      id: uuidv4(),
       code: otp,
       userId: user.id,
       expiresAt: new Date(Date.now() + 5 * 60 * 1000)
@@ -111,9 +120,9 @@ export const forgotPassword = asyncHandler(async (req: Request, res: Response) =
 export const verifyOTP = asyncHandler(async (req: Request, res: Response) => {
   const { emailOrPhone, code } = req.body;
 
-  const user = await prisma.user.findFirst({
+  const user = await prisma.users.findFirst({
     where: {
-      OR: [{ email: emailOrPhone }, { phone: emailOrPhone }]
+      OR: [{ email: emailOrPhone }, { contactNumber: emailOrPhone }]
     }
   });
 
@@ -121,7 +130,7 @@ export const verifyOTP = asyncHandler(async (req: Request, res: Response) => {
     throw new ApiError(404, "User not found");
   }
 
-  const otp = await prisma.oTP.findFirst({
+  const otp = await prisma.otps.findFirst({
     where: {
       userId: user.id,
       code,
@@ -133,10 +142,21 @@ export const verifyOTP = asyncHandler(async (req: Request, res: Response) => {
     throw new ApiError(400, "Invalid or expired OTP");
   }
 
-  await prisma.oTP.update({
+  await prisma.otps.update({
     where: { id: otp.id },
     data: { used: true }
   });
+
+  // Also verify email if this was a registration OTP
+  if (!user.isEmailVerified) {
+      await prisma.users.update({
+          where: { id: user.id },
+          data: {
+            isEmailVerified: true,
+            updatedAt: new Date()
+          }
+      });
+  }
 
   res.json({ message: "OTP verified" });
 });
@@ -145,9 +165,9 @@ export const verifyOTP = asyncHandler(async (req: Request, res: Response) => {
 export const resetPassword = asyncHandler(async (req: Request, res: Response) => {
   const { emailOrPhone, newPassword } = req.body;
 
-  const user = await prisma.user.findFirst({
+  const user = await prisma.users.findFirst({
     where: {
-      OR: [{ email: emailOrPhone }, { phone: emailOrPhone }]
+      OR: [{ email: emailOrPhone }, { contactNumber: emailOrPhone }]
     }
   });
 
@@ -157,9 +177,12 @@ export const resetPassword = asyncHandler(async (req: Request, res: Response) =>
 
   const hashed = await hashPassword(newPassword);
 
-  await prisma.user.update({
+  await prisma.users.update({
     where: { id: user.id },
-    data: { password: hashed }
+    data: {
+        password: hashed,
+        updatedAt: new Date()
+    }
   });
 
   res.json({ message: "Password reset successful" });
@@ -180,8 +203,9 @@ export const logout = asyncHandler(async (req: Request, res: Response) => {
     throw new ApiError(400, "Invalid token");
   }
 
-  await prisma.blacklistedToken.create({
+  await prisma.blacklisted_tokens.create({
     data: {
+      id: uuidv4(),
       token,
       expiresAt: new Date(decoded.exp * 1000)
     }

@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import prisma from "../config/prisma";
 import { asyncHandler } from "../utils/asyncHandler";
 import ApiError from "../utils/ApiError";
+import { v4 as uuidv4 } from "uuid";
 
 // Create Reminder
 export const createReminder = asyncHandler(async (req: Request, res: Response) => {
@@ -18,8 +19,9 @@ export const createReminder = asyncHandler(async (req: Request, res: Response) =
         throw new ApiError(400, "Invalid date format");
     }
 
-    const reminder = await prisma.reminder.create({
+    const reminder = await prisma.reminders.create({
         data: {
+            id: uuidv4(),
             userId,
             title,
             description,
@@ -39,7 +41,7 @@ export const getReminders = asyncHandler(async (req: Request, res: Response) => 
     if (status === "completed") where.isCompleted = true;
     if (status === "pending") where.isCompleted = false;
 
-    const reminders = await prisma.reminder.findMany({
+    const reminders = await prisma.reminders.findMany({
         where,
         orderBy: { scheduledTime: "asc" }
     });
@@ -53,8 +55,8 @@ export const updateReminder = asyncHandler(async (req: Request, res: Response) =
     const { title, description, scheduledTime, isCompleted } = req.body;
     const userId = (req as any).user.id;
 
-    const reminder = await prisma.reminder.findFirst({
-        where: { id: Number(id), userId }
+    const reminder = await prisma.reminders.findFirst({
+        where: { id, userId }
     });
 
     if (!reminder) {
@@ -73,8 +75,8 @@ export const updateReminder = asyncHandler(async (req: Request, res: Response) =
     }
     if (isCompleted !== undefined) data.isCompleted = isCompleted;
 
-    const updated = await prisma.reminder.update({
-        where: { id: Number(id) },
+    const updated = await prisma.reminders.update({
+        where: { id },
         data
     });
 
@@ -86,16 +88,16 @@ export const deleteReminder = asyncHandler(async (req: Request, res: Response) =
     const { id } = req.params;
     const userId = (req as any).user.id;
 
-    const reminder = await prisma.reminder.findFirst({
-        where: { id: Number(id), userId }
+    const reminder = await prisma.reminders.findFirst({
+        where: { id, userId }
     });
 
     if (!reminder) {
         throw new ApiError(404, "Reminder not found");
     }
 
-    await prisma.reminder.delete({
-        where: { id: Number(id) }
+    await prisma.reminders.delete({
+        where: { id }
     });
 
     res.json({ message: "Reminder deleted" });

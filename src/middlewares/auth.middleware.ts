@@ -16,7 +16,7 @@ export const authMiddleware = async (
 
     const token = authHeader.split(" ")[1];
 
-    const blacklisted = await prisma.blacklistedToken.findUnique({
+    const blacklisted = await prisma.blacklisted_tokens.findUnique({
       where: { token }
     });
 
@@ -26,7 +26,7 @@ export const authMiddleware = async (
 
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET!);
-      (req as any).user = decoded;
+      (req as any).user = decoded; // Contains id (string) and role
       next();
     } catch (error) {
        throw new ApiError(401, "Invalid token");
