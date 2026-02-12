@@ -6,6 +6,11 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+////////////////////////////////////////////////////////////
+// USER & AUTH
+////////////////////////////////////////////////////////////
+
 model User {
   id            Int      @id @default(autoincrement())
   fullName      String
@@ -23,7 +28,6 @@ model User {
   otps OTP[]
 }
 
-
 model OTP {
   id        Int      @id @default(autoincrement())
   code      String
@@ -33,6 +37,7 @@ model OTP {
   userId Int
   user   User @relation(fields: [userId], references: [id])
 }
+
 ////////////////////////////////////////////////////////////
 // DOCTOR
 ////////////////////////////////////////////////////////////
@@ -45,6 +50,7 @@ model Doctor {
   sessions     Session[]
   appointments Appointment[] @relation("DoctorAppointments")
   schedules    Schedule[]
+  payments     Payment[]     // ✅ FIXED
 }
 
 ////////////////////////////////////////////////////////////
@@ -75,7 +81,7 @@ model Session {
   patientCapacity Int
   startTime       DateTime
   endTime         DateTime
-  sessionType     String
+  sessionType     String   // Normal | Teleconsultation
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -84,7 +90,7 @@ model Session {
 }
 
 ////////////////////////////////////////////////////////////
-// APPOINTMENT  (Updated & Correct)
+// APPOINTMENT
 ////////////////////////////////////////////////////////////
 
 model Appointment {
@@ -92,7 +98,7 @@ model Appointment {
   sessionId Int?
   doctorId  Int
   patientId Int
-  status    String   @default("Scheduled")
+  status    String   @default("Scheduled") // Scheduled | Completed | Cancelled
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -101,6 +107,25 @@ model Appointment {
   session Session? @relation(fields: [sessionId], references: [id])
 
   prescriptions Prescription[]
+  payment       Payment?   // ✅ FIXED (1–1)
+}
+
+////////////////////////////////////////////////////////////
+// PAYMENT / INCOME
+////////////////////////////////////////////////////////////
+
+model Payment {
+  id            Int      @id @default(autoincrement())
+  appointmentId Int      @unique
+  doctorId      Int
+  amount        Float
+  paymentMethod String   // Cash | Card | Bank Transfer
+  sessionType   String   // Normal | Teleconsultation
+  status        String   @default("Paid") // Paid | Refunded
+  createdAt     DateTime @default(now())
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id])
+  doctor      Doctor      @relation(fields: [doctorId], references: [id])
 }
 
 ////////////////////////////////////////////////////////////
@@ -113,6 +138,7 @@ model Prescription {
   patientId     Int?
   createdAt     DateTime @default(now())
   note          String?
+
   appointment Appointment @relation(fields: [appointmentId], references: [id])
   patient     Patient?    @relation(fields: [patientId], references: [id])
 
@@ -146,13 +172,14 @@ model Medicine {
 ////////////////////////////////////////////////////////////
 
 model Schedule {
-  id          Int    @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   doctorId    Int
   location    String
   workingDays Json
   startTime   String
   endTime     String
- date        DateTime @default(now())
+  date        DateTime @default(now())
+
   doctor Doctor @relation(fields: [doctorId], references: [id])
   slots  Slot[]
 }
@@ -172,12 +199,16 @@ model SlotAppointment {
   id          Int      @id @default(autoincrement())
   slotId      Int      @unique
   patientName String
-  type        String // Teleconsult / In-Person
+  type        String   // Teleconsult | In-Person
   status      String   @default("Pending")
   createdAt   DateTime @default(now())
 
   slot Slot @relation(fields: [slotId], references: [id])
 }
+
+////////////////////////////////////////////////////////////
+// SECURITY
+////////////////////////////////////////////////////////////
 
 model BlacklistedToken {
   id        Int      @id @default(autoincrement())

@@ -7,37 +7,42 @@ import prescriptionRoutes from "./routes/prescription.routes";
 import sessionRoutes from "./routes/session.routes";
 import scheduleRoutes from "./routes/schedule.routes";
 import slotRoutes from "./routes/slot.routes";
-import appointmentRoutes from "./routes/appointment.routes";  // ✅ ADDED
+import appointmentRoutes from "./routes/appointment.routes";
 
+import incomeRoutes from "./routes/income.routes";
 import authRoutes from "./routes/auth.routes";
 import profileRoutes from "./routes/profile.routes";
-
 import helpRoutes from "./routes/help.routes";
+
+// ✅ Load env FIRST
 dotenv.config();
 
 const app = express();
+
+// ✅ Single Prisma instance (best practice)
 const prisma = new PrismaClient();
 
 app.use(cors());
 app.use(express.json());
 
-// Routes
+// ---------------- ROUTES ----------------
 app.use("/api/prescriptions", prescriptionRoutes);
 app.use("/api/sessions", sessionRoutes);
 app.use("/api/schedules", scheduleRoutes);
 app.use("/api/slots", slotRoutes);
-app.use("/api/appointments", appointmentRoutes);   // ✅ FIXED
-
-
+app.use("/api/appointments", appointmentRoutes);
+app.use("/api/income", incomeRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/help", helpRoutes);
-// Root
-app.get("/", (req, res) => {
+
+// ---------------- ROOT ----------------
+app.get("/", (_req, res) => {
   res.send("Doctor Appointment Backend Running with Prisma + PostgreSQL (TypeScript)");
 });
 
-const PORT = process.env.PORT || 5000;
+// ---------------- SERVER ----------------
+const PORT = Number(process.env.PORT) || 5000;
 
 async function startServer() {
   try {
