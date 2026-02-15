@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
@@ -8,34 +9,80 @@ datasource db {
 }
 
 ////////////////////////////////////////////////////////////
+// USER & AUTH
+////////////////////////////////////////////////////////////
+
+model User {
+  id            Int      @id @default(autoincrement())
+  fullName      String
+  email         String   @unique
+  phone         String   @unique
+  password      String
+  medicalSpec   String?
+  hospital      String?
+  slmcNumber    String?
+  profileImage  String?
+  biometric     Boolean  @default(false)
+  isVerified    Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  otps OTP[]
+}
+
+model OTP {
+  id        Int      @id @default(autoincrement())
+  code      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id])
+}
+
+////////////////////////////////////////////////////////////
 // DOCTOR
 ////////////////////////////////////////////////////////////
 
 model Doctor {
-  id           Int             @id @default(autoincrement())
-  name         String
-  email        String          @unique
+  id    Int    @id @default(autoincrement())
+  name  String
+  email String @unique
 
-  // Existing System
   sessions     Session[]
-  appointments Appointment[]   @relation("DoctorAppointments")
-
-  // NEW — Schedule Manager System
+  appointments Appointment[] @relation("DoctorAppointments")
   schedules    Schedule[]
+  payments     Payment[]     // ✅ FIXED
 }
 
 ////////////////////////////////////////////////////////////
-// SESSIONS (Existing)
+// PATIENT
+////////////////////////////////////////////////////////////
+
+model Patient {
+  id        Int     @id @default(autoincrement())
+  name      String
+  email     String? @unique
+  age       Int?
+  patientId String? @unique
+  ref       String?
+  status    String  @default("Active")
+
+  appointments  Appointment[]
+  prescriptions Prescription[]
+}
+
+////////////////////////////////////////////////////////////
+// SESSION
 ////////////////////////////////////////////////////////////
 
 model Session {
-  id              Int       @id @default(autoincrement())
+  id              Int      @id @default(autoincrement())
   doctorId        Int
   hospitalName    String
   patientCapacity Int
   startTime       DateTime
   endTime         DateTime
-  sessionType     String
+  sessionType     String   // Normal | Teleconsultation
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -44,83 +91,89 @@ model Session {
 }
 
 ////////////////////////////////////////////////////////////
-// PATIENT
-////////////////////////////////////////////////////////////
-
-model Patient {
-  id            Int            @id @default(autoincrement())
-  name          String
-  email         String?        @unique
-  age           Int?
-  patientId     String?        @unique
-  ref           String?
-  status        String         @default("Active")
-
-  appointments  Appointment[]
-  prescriptions Prescription[]
-}
-
-////////////////////////////////////////////////////////////
-// EXISTING APPOINTMENT SYSTEM
+// APPOINTMENT
 ////////////////////////////////////////////////////////////
 
 model Appointment {
   id        Int      @id @default(autoincrement())
-  sessionId Int
+  sessionId Int?
   doctorId  Int
   patientId Int
-  status    String   @default("Scheduled")
+  status    String   @default("Scheduled") // Scheduled | Completed | Cancelled
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   doctor  Doctor  @relation("DoctorAppointments", fields: [doctorId], references: [id])
   patient Patient @relation(fields: [patientId], references: [id])
-  session Session @relation(fields: [sessionId], references: [id])
+  session Session? @relation(fields: [sessionId], references: [id])
+
+  prescriptions Prescription[]
+  payment       Payment?   // ✅ FIXED (1–1)
 }
 
 ////////////////////////////////////////////////////////////
-// PRESCRIPTIONS + MEDICINES
+// PAYMENT / INCOME
+////////////////////////////////////////////////////////////
+
+model Payment {
+  id            Int      @id @default(autoincrement())
+  appointmentId Int      @unique
+  doctorId      Int
+  amount        Float
+  paymentMethod String   // Cash | Card | Bank Transfer
+  sessionType   String   // Normal | Teleconsultation
+  status        String   @default("Paid") // Paid | Refunded
+  createdAt     DateTime @default(now())
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id])
+  doctor      Doctor      @relation(fields: [doctorId], references: [id])
+}
+
+////////////////////////////////////////////////////////////
+// PRESCRIPTION SYSTEM
 ////////////////////////////////////////////////////////////
 
 model Prescription {
-  id        Int                      @id @default(autoincrement())
-  patientId Int
-  createdAt DateTime                 @default(now())
+  id            Int      @id @default(autoincrement())
+  appointmentId Int
+  patientId     Int?
+  createdAt     DateTime @default(now())
+  note          String?
 
-  medicines MedicineOnPrescription[]
-  patient   Patient                  @relation(fields: [patientId], references: [id])
+  appointment Appointment @relation(fields: [appointmentId], references: [id])
+  patient     Patient?    @relation(fields: [patientId], references: [id])
+
+  medicines PrescriptionMed[]
+}
+
+model PrescriptionMed {
+  id             Int          @id @default(autoincrement())
+  prescriptionId Int
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id])
+
+  medicineName String
+  dosage       String?
+  frequency    String?
+  duration     String?
+  specialNote  String?
+  isFavorite   Boolean @default(false)
 }
 
 model Medicine {
-  id            Int                      @id @default(autoincrement())
-  name          String                   @unique
-  dosage        String?
-  frequency     String?
-  instructions  String?
-  favorites     Boolean                  @default(false)
-
-  prescriptions MedicineOnPrescription[]
-}
-
-model MedicineOnPrescription {
-  id             Int          @id @default(autoincrement())
-  prescriptionId Int
-  medicineId     Int
-  dosage         String
-  frequency      String
-  period         String
-  specialNote    String?
-
-  medicine       Medicine     @relation(fields: [medicineId], references: [id])
-  prescription   Prescription @relation(fields: [prescriptionId], references: [id])
+  id            Int      @id @default(autoincrement())
+  name          String   @unique
+  defaultDosage String?
+  defaultFreq   String?
+  defaultDur    String?
+  createdAt     DateTime @default(now())
 }
 
 ////////////////////////////////////////////////////////////
-// NEW — SCHEDULE MANAGER SYSTEM
+// SCHEDULE & SLOTS
 ////////////////////////////////////////////////////////////
 
 model Schedule {
-  id          Int       @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   doctorId    Int
   location    String
   workingDays Json       // Example: { "mon": true, "tue": false }
@@ -142,12 +195,15 @@ model Slot {
   id          Int @id @default(autoincrement())
   slotId      Int @unique
   patientName String
-  type        String
-  status      String @default("Pending")
+  type        String   // Teleconsult | In-Person
+  status      String   @default("Pending")
   createdAt   DateTime @default(now())
   slot        Slot @relation(fields: [slotId], references: [id])
 }
-}
+
+////////////////////////////////////////////////////////////
+// SECURITY
+////////////////////////////////////////////////////////////
 
 model SlotAppointment {
   id          Int       @id @default(autoincrement())
@@ -158,4 +214,209 @@ model SlotAppointment {
   createdAt   DateTime  @default(now())
 
   slot        Slot      @relation(fields: [slotId], references: [id])
+}
+
+enum AppointmentStatus {
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+  RESCHEDULED
+  UNPAID
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+  CANCELLED
+  UNPAID
+}
+
+enum CommunicationMethod {
+  EMAIL
+  SMS
+  PHONE
+  WHATSAPP
+}
+
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  BLACKLISTED
+}
+
+enum ExportFormat {
+  CSV
+  EXCEL
+  PDF
+  JSON
+}
+
+enum ExportStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum MessageSenderType {
+  CUSTOMER
+  AGENT
+  SYSTEM
+  ADMIN
+}
+
+enum NotificationType {
+  APPOINTMENT_CONFIRMED
+  APPOINTMENT_CANCELLED
+  PAYMENT_SUCCESS
+  PAYMENT_FAILED
+  TASK_ASSIGNED
+  SYSTEM_ALERT
+  REMINDER
+}
+
+enum PaymentMethod {
+  CREDIT_CARD
+  DEBIT_CARD
+  BANK_TRANSFER
+  CASH
+  MOBILE_PAYMENT
+}
+
+enum ReportStatus {
+  PENDING
+  GENERATING
+  COMPLETED
+  FAILED
+}
+
+enum ReportType {
+  APPOINTMENT_SUMMARY
+  REVENUE_ANALYSIS
+  AGENT_PERFORMANCE
+  CUSTOMER_SATISFACTION
+  OPERATIONAL_METRICS
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum TicketCategory {
+  TECHNICAL
+  BILLING
+  APPOINTMENT
+  COMPLAINT
+  GENERAL
+  EMERGENCY
+  FEEDBACK
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+  CRITICAL
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_CUSTOMER
+  WAITING_AGENT
+  RESOLVED
+  CLOSED
+  CANCELLED
+}
+
+enum UserRole {
+  ADMIN
+  SUPERVISOR
+  AGENT
+  CORPORATE
+  PATIENT
+}
+
+enum doctor_status {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum hospital_status {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PrescriptionStatus {
+  ACTIVE
+  REVISED
+  CANCELLED
+  COMPLETED
+}
+
+enum sessionstatus {
+  SCHEDULED
+  PAUSED
+  ONGOING
+  ENDED
+}
+
+enum AgentAppointmentStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+enum AgentPaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+enum AgentPaymentMethod {
+  BILL_TO_PHONE
+  DEDUCT_FROM_SALARY
+}
+
+enum AgentReportType {
+  APPOINTMENTS
+  REVENUE
+  DOCTOR_PERFORMANCE
+  HOSPITAL_ANALYTICS
+  AGENT_PERFORMANCE
+  CUSTOM
+}
+
+enum session_status_list {
+  SCHEDULED
+  ONGOING
+  PAUSED
+  ENDED
 }

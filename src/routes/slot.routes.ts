@@ -1,14 +1,20 @@
 import { Router } from "express";
 import {
-  getSlotsBySchedule,
-  getSlotsByDate,
-  bookSlot,
-} from "../controllers/slot.controller";
+  createSchedule,
+  updateSchedule,
+  getDoctorSchedules,
+  getScheduleById,
+  regenerateSlots,
+  bookSlot // import the unified one
+} from "../controllers/schedule.controller";
 
 const router = Router();
 
-router.get("/schedule/:scheduleId", getSlotsBySchedule);
-router.get("/date", getSlotsByDate);
+router.post("/", createSchedule);
+router.put("/:id", updateSchedule);
+router.get("/doctor/:doctorId", getDoctorSchedules);
+router.get("/:id", getScheduleById);
+router.post("/:id/regenerate", regenerateSlots);
 router.post("/:slotId/book", bookSlot);
 
 export default router;

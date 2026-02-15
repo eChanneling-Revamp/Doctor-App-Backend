@@ -1,5 +1,6 @@
 import { prisma } from "../config/prisma";
 
+
 const DAY_MAP: Record<string, number> = {
   mon: 1,
   tue: 2,

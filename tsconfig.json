@@ -8,13 +8,18 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "baseUrl": "src",
-    "paths": {
-      "@services/*": ["services/*"],
-      "@controllers/*": ["controllers/*"],
-      "@utils/*": ["utils/*"]
-    }
+    "strict": true,
+    "skipLibCheck": true,
 
+    /* Output */
+    "outDir": "dist",
+    "sourceMap": true,
 
-  }
+    /* Optional — if you want cleaner import paths */
+    "baseUrl": "./src",
+
+    /* Node environment */
+    "types": ["node"]
+  },
+  "include": ["src"]
 }

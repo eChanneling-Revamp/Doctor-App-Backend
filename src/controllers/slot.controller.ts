@@ -1,38 +1,51 @@
 import { Request, Response } from "express";
+<<<<<<< Updated upstream
 import { prisma } from "../config/prisma";
+=======
+import prisma from "../config/prisma";
+>>>>>>> Stashed changes
 
-// ---------------- Get Slots By Schedule ----------------
+// ---------------- GET Slots By Schedule ----------------
 export const getSlotsBySchedule = async (req: Request, res: Response) => {
   try {
     const scheduleId = Number(req.params.scheduleId);
 
+    if (isNaN(scheduleId)) {
+      return res.status(400).json({ message: "Invalid scheduleId" });
+    }
+
     const slots = await prisma.slot.findMany({
       where: { scheduleId },
-      orderBy: [{ date: "asc" }, { time: "asc" }],
+      orderBy: { date: "asc" },
     });
 
     res.json(slots);
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
+  } catch (error: any) {
+    console.error(error);
+    res.status(500).json({ message: "Failed to fetch slots" });
   }
 };
 
-// ---------------- Get Daily Slots ----------------
+// ---------------- GET Slots By Date ----------------
 export const getSlotsByDate = async (req: Request, res: Response) => {
   try {
-    const { scheduleId, date } = req.query;
+    const dateParam = req.params.date;
 
-    const parsedDate = new Date(date as string);
+    if (!dateParam) {
+      return res.status(400).json({ message: "Date is required" });
+    }
+
+    const date = new Date(dateParam);
 
     const slots = await prisma.slot.findMany({
       where: {
-        scheduleId: Number(scheduleId),
-        date: parsedDate,
+        date: date,
       },
-      orderBy: { time: "asc" },
+      orderBy: { startTime: "asc" },
     });
 
     res.json(slots);
+<<<<<<< Updated upstream
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -63,3 +76,37 @@ export const bookSlot = async (req: Request, res: Response) => {
     res.status(500).json({ error: err.message });
   }
 };
+=======
+  } catch (error: any) {
+    console.error(error);
+    res.status(500).json({ message: "Failed to fetch slots by date" });
+  }
+};
+
+// ---------------- BOOK SLOT ----------------
+export const bookSlot = async (req: Request, res: Response) => {
+  try {
+    const slotId = Number(req.params.slotId); // slot.id is number
+    if (isNaN(slotId)) return res.status(400).json({ message: "Invalid slot ID" });
+
+    const slot = await prisma.slot.findUnique({
+      where: { id: slotId },
+    });
+
+    if (!slot) return res.status(404).json({ message: "Slot not found" });
+    if (slot.isBooked) return res.status(400).json({ message: "Slot already booked" });
+
+    const updatedSlot = await prisma.slot.update({
+      where: { id: slotId },
+      data: { isBooked: true },
+    });
+
+    res.json({ message: "Slot booked successfully", slot: updatedSlot });
+  } catch (err: any) {
+    console.error("Book Slot Error:", err);
+    res.status(500).json({ message: "Failed to book slot" });
+  }
+};
+
+  
+>>>>>>> Stashed changes
