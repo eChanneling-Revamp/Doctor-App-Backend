@@ -4,7 +4,10 @@ import PDFDocument from "pdfkit";
 import fs from "fs";
 import path from "path";
 import nodemailer from "nodemailer";
-/* =======================================================
+import { AppointmentStatus } from "@prisma/client";
+import { randomUUID } from "crypto";
+
+ /*=======================================================
     SEARCH ACTIVE APPOINTMENTS
 ========================================================== */
 export const searchActiveAppointments = async (req: Request, res: Response) => {
@@ -14,9 +17,11 @@ export const searchActiveAppointments = async (req: Request, res: Response) => {
 
     const appointments = await prisma.appointment.findMany({
       where: {
-        status: "Scheduled",
+        status: AppointmentStatus.CONFIRMED,
+
         patient: {
-          name: {
+         patient_name: {
+
             contains: query,
             mode: "insensitive",
           },
@@ -43,7 +48,7 @@ export const searchActiveAppointments = async (req: Request, res: Response) => {
 export const viewAppointmentDetails = async (req: Request, res: Response) => {
   try {
     const appointment = await prisma.appointment.findUnique({
-      where: { id: Number(req.params.id) },
+      where: { id: (req.params.id) },
       include: { prescriptions: true },
     });
 
@@ -143,37 +148,52 @@ export const createPrescription = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "appointmentId is required" });
     }
 
-    const id = Number(appointmentId);
-
-    // Check if appointment exists
+    // Fetch appointment with patient and doctor
     const appointment = await prisma.appointment.findUnique({
-      where: { id },
+      where: { id: appointmentId },
+      include: {
+        patient: true,
+        doctor: true,
+      },
     });
 
     if (!appointment) {
       return res.status(404).json({ error: "Appointment not found" });
     }
 
-    if (!appointment.patientId) {
-      return res.status(400).json({ error: "Appointment has no patient assigned" });
+    // Ensure patient and doctor exist
+    if (!appointment.patient || !appointment.doctor) {
+      return res
+        .status(400)
+        .json({ error: "Appointment must have a patient and doctor assigned" });
     }
 
-    // Create prescription
+    // Ensure patient email exists
+    if (!appointment.patient.email) {
+      return res.status(400).json({ error: "Patient has no email assigned" });
+    }
+
+    // Generate unique prescription number
+    const prescriptionNumber = `RX-${randomUUID()}`;
+
+    // Create prescription with empty HTML content (you can fill it later)
     const prescription = await prisma.prescription.create({
       data: {
-        appointmentId: id,
-        patientId: appointment.patientId,
+        prescriptionNumber,
+        appointmentId: appointment.id,
+        patientId: appointment.patient.id,
+        patientEmail: appointment.patient.email,
+        doctorId: appointment.doctor.id,
+        htmlContent: "", // empty for now
       },
     });
 
-    res.json(prescription);
-
+    return res.status(201).json(prescription);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "Failed to create prescription" });
+    return res.status(500).json({ error: "Failed to create prescription" });
   }
 };
-
 /* =======================================================
     ADD MEDICINE TO PRESCRIPTION
 ========================================================== */
@@ -188,7 +208,7 @@ export const addMedicineToPrescription = async (req: Request, res: Response) => 
     }
 
     const prescription = await prisma.prescription.findUnique({
-      where: { id: Number(id) },
+      where: { id: (id) },
     });
 
     if (!prescription) {
@@ -197,7 +217,7 @@ export const addMedicineToPrescription = async (req: Request, res: Response) => 
 
     const med = await prisma.prescriptionMed.create({
       data: {
-        prescriptionId: Number(id),
+        prescriptionId: (id),
         medicineName,
         dosage,
         frequency,
@@ -291,27 +311,26 @@ export const toggleFavoriteMedicine = async (req: Request, res: Response) => {
 export const generatePrescriptionPDF = async (req: Request, res: Response) => {
   try {
     const { prescriptionId } = req.params;
-    const id = Number(prescriptionId);
 
-    if (isNaN(id)) {
-      return res.status(400).json({ error: "Invalid prescription ID format." });
+    if (!prescriptionId) {
+      return res.status(400).json({ error: "Invalid prescription ID." });
     }
 
+    // Keep ID as string (Prisma id is String)
     const prescription = await prisma.prescription.findUnique({
-      where: { id },
+      where: { id: prescriptionId },
       include: {
         appointment: {
           include: {
             patient: true,
-            doctor: true, // assuming doctor relation exists
+            doctor: true,
           },
         },
         medicines: true,
       },
     });
 
-    if (!prescription)
-      return res.status(404).json({ error: "Prescription not found" });
+    if (!prescription) return res.status(404).json({ error: "Prescription not found" });
 
     const doc = new PDFDocument({ margin: 50, size: "A4" });
     res.setHeader("Content-Type", "application/pdf");
@@ -326,20 +345,19 @@ export const generatePrescriptionPDF = async (req: Request, res: Response) => {
     // Doctor & Patient Info
     doc.fontSize(14).text("Prescription", { underline: true, align: "center" });
     doc.moveDown();
-    doc.fontSize(12).text(`Doctor: ${prescription.appointment.doctor?.name ?? "N/A"}`);
-    doc.text(`Patient: ${prescription.appointment.patient.name}`);
-    doc.text(`Email: ${prescription.appointment.patient.email}`);
-    doc.text(`Appointment Ref: ${prescription.appointment.id}`);
+    doc.fontSize(12).text(`Doctor: ${prescription.appointment?.doctor?.name ?? "N/A"}`);
+    doc.text(`Patient: ${prescription.appointment?.patient?.patient_name ?? "N/A"}`);
+    doc.text(`Email: ${prescription.appointment?.patient?.email ?? "N/A"}`);
+    doc.text(`Appointment Ref: ${prescription.appointmentId}`);
     doc.moveDown();
 
-    // Medicines Table Header
+    // Medicines Table
     doc.fontSize(12).text("Medicines:", { underline: true });
     doc.moveDown(0.5);
 
     const tableTop = doc.y;
     const itemSpacing = 20;
 
-    // Table Columns
     const col1 = 50;   // Medicine Name
     const col2 = 200;  // Dose
     const col3 = 270;  // Frequency
@@ -357,7 +375,7 @@ export const generatePrescriptionPDF = async (req: Request, res: Response) => {
     doc.font("Helvetica");
 
     // Table rows
-    prescription.medicines.forEach((m: any, i: number) => {
+    prescription.medicines.forEach((m, i) => {
       const y = tableTop + (i + 1) * itemSpacing;
       doc.text(m.medicineName, col1, y);
       doc.text(m.dosage ?? "N/A", col2, y);
@@ -368,17 +386,12 @@ export const generatePrescriptionPDF = async (req: Request, res: Response) => {
 
     doc.moveDown(prescription.medicines.length + 1);
 
-    // Footer
-   // doc.moveDown(2);
-   // doc.text("Signature: ______________________", { align: "right" });
-
     doc.end();
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Failed to generate PDF." });
   }
 };
-
 
 /* =======================================================
     SEND PRESCRIPTION TO EMAIL

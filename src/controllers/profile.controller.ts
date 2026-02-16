@@ -1,5 +1,6 @@
+
 import { Request, Response } from "express";
-import  prisma  from "../config/prisma";
+import prisma from "../config/prisma";
 import { comparePassword, hashPassword } from "../utils/hash";
 
 // GET PROFILE
@@ -10,10 +11,10 @@ export const getProfile = async (req: Request, res: Response) => {
     where: { id: userId },
     select: {
       id: true,
-      fullName: true,
+      name: true,           // ✅ use 'name' instead of 'fullName'
       email: true,
-      phone: true,
-      medicalSpec: true,
+      contactNumber: true,
+      medicalSpecs: true,
       hospital: true,
       slmcNumber: true,
       profileImage: true,
@@ -41,10 +42,10 @@ export const updateProfile = async (req: Request, res: Response) => {
   await prisma.user.update({
     where: { id: userId },
     data: {
-      fullName,
+      name: fullName,       // ✅ map fullName → name
       email,
-      phone,
-      medicalSpec,
+      contactNumber: phone,
+      medicalSpecs:medicalSpec,
       hospital,
       slmcNumber,
       profileImage
@@ -54,7 +55,7 @@ export const updateProfile = async (req: Request, res: Response) => {
   res.json({ message: "Profile updated successfully" });
 };
 
-// CHANGE PASSWORD (SECURITY)
+// CHANGE PASSWORD
 export const changePassword = async (req: Request, res: Response) => {
   const userId = (req as any).user.id;
   const { currentPassword, newPassword } = req.body;

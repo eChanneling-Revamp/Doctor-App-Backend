@@ -1,14 +1,17 @@
 // src/modules/schedule/schedule.service.ts
-import  prisma  from "../config/prisma";
+
+import prisma from "../config/prisma";
 import { CreateScheduleDTO } from "../module/schedule/schedule.dto";
 import { generateSlotsForSchedule } from "../utils/slotGenerator";
 
 class ScheduleService {
   async createSchedule(dto: CreateScheduleDTO) {
     const { doctorId, location, workingDays, startTime, endTime } = dto;
+
+    // ✅ Convert doctorId to string
     const created = await prisma.schedule.create({
       data: {
-        doctorId,
+        doctorId: doctorId.toString(),
         location,
         workingDays: workingDays as any,
         startTime,
@@ -33,7 +36,7 @@ class ScheduleService {
 
   async getScheduleForDoctor(doctorId: number) {
     return prisma.schedule.findMany({
-      where: { doctorId },
+      where: { doctorId: doctorId.toString() }, // ✅ convert number to string
       include: {
         slots: { orderBy: { date: "asc" } },
       },

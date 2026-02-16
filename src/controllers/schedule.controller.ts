@@ -58,7 +58,7 @@ export const getDoctorSchedules = async (req: Request, res: Response) => {
     const doctorId = Number(req.params.doctorId);
 
     const schedules = await prisma.schedule.findMany({
-      where: { doctorId },
+      where: { doctorId: String(doctorId) },
       include: { slots: true },
     });
 

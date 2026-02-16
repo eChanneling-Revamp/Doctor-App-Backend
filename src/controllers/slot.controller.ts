@@ -40,109 +40,33 @@ export const getSlotsByDate = async (req: Request, res: Response) => {
 
 // ---------------- Book a Slot ----------------
 
-
-
-/*
 export const bookSlot = async (req: Request, res: Response) => {
   try {
-    const slotId = Number(req.params.slotId);
-    const { patientName, type } = req.body;
+    const {
+      slotId,
+      sessionId,          // ✅ MUST come from frontend
+      patientName,
+      patientEmail,
+      patientPhone,
+      doctorId,
+      patientId,
+      consultationFee,
+      totalAmount,
+      type,
+    } = req.body;
 
-    const slot = await prisma.slot.update({
-      where: { id: slotId },
-      data: {
-        isBooked: true,
-        appointment: {
-          create: {
-            patientName,
-            type,
-            status: "Confirmed",
-          },
-        },
-      },
-    });
-
-    res.json({ message: "Slot booked", slot });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-};
-*/
-/*
-export const bookSlot = async (req: Request, res: Response) => {
-  try {
-    const slotId = Number(req.params.slotId);
-    const { patientName, patientEmail, doctorId, type } = req.body;
-
-    // 1. Check slot exists
+    // 1️⃣ Check slot
     const slot = await prisma.slot.findUnique({
       where: { id: slotId },
-      include: { schedule: true }
     });
 
-    if (!slot) return res.status(404).json({ error: "Slot not found" });
-    if (slot.isBooked) return res.status(400).json({ error: "Slot already booked" });
+    if (!slot)
+      return res.status(404).json({ error: "Slot not found" });
 
-    // 2. Create or find patient
-    const patient = await prisma.patient.upsert({
-      where: { email: patientEmail || "" },
-      create: {
-        name: patientName,
-        email: patientEmail
-      },
-      update: {}
-    });
+    if (slot.isBooked)
+      return res.status(400).json({ error: "Slot already booked" });
 
-    // 3. Create real Appointment
-    const appointment = await prisma.appointment.create({
-      data: {
-        doctorId,
-        patientId: patient.id,
-        sessionId: null, // or schedule.sessionId if linked
-      }
-    });
-
-    // 4. Update slot + add SlotAppointment
-    await prisma.slot.update({
-      where: { id: slotId },
-      data: {
-        isBooked: true,
-        appointment: {
-          create: {
-           
-            patientName,
-            type
-          }
-        }
-      }
-    });
-
-    res.json({
-      message: "Slot successfully booked",
-      appointmentId: appointment.id, // IMPORTANT
-      patientId: patient.id
-    });
-
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Failed to book slot" });
-  }
-};
-*/
-export const bookSlot = async (req: Request, res: Response) => {
-  try {
-    const { slotId, patientName, type, doctorId, patientId } = req.body;
-
-    // 1. Validate slot
-    const slot = await prisma.slot.findUnique({
-      where: { id: slotId },
-      include: { schedule: true },
-    });
-
-    if (!slot) return res.status(404).json({ error: "Slot not found" });
-    if (slot.isBooked) return res.status(400).json({ error: "Slot already booked" });
-
-    // 2. Create SlotAppointment (existing logic)
+    // 2️⃣ Create SlotAppointment
     const slotAppointment = await prisma.slotAppointment.create({
       data: {
         slotId,
@@ -151,16 +75,24 @@ export const bookSlot = async (req: Request, res: Response) => {
       },
     });
 
-    // 3. Automatically create REAL Appointment entry
+    // 3️⃣ Create REAL Appointment
     const appointment = await prisma.appointment.create({
       data: {
+        appointmentNumber: `APT-${Date.now()}`,
+        patientName,
+        patientEmail,
+        patientPhone,
         doctorId,
-        patientId,
-        sessionId: null, // OR slot.schedule.sessionId if sessions are linked
+        patientId: Number(patientId),
+        sessionId, // ✅ required
+        consultationFee,
+        totalAmount,
+        // ❗ do NOT set status (default CONFIRMED will apply)
+        // ❗ do NOT set paymentStatus (default PENDING will apply)
       },
     });
 
-    // 4. Mark slot as booked
+    // 4️⃣ Mark slot booked
     await prisma.slot.update({
       where: { id: slotId },
       data: { isBooked: true },
@@ -171,6 +103,7 @@ export const bookSlot = async (req: Request, res: Response) => {
       slotAppointment,
       appointment,
     });
+
   } catch (error) {
     console.error("Book Slot Error:", error);
     res.status(500).json({ error: "Failed to book slot" });

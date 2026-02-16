@@ -1,48 +1,38 @@
-import express from "express";
+
+import { Router } from "express";
 import {
   searchActiveAppointments,
   viewAppointmentDetails,
   searchMedicines,
   viewMedicineDetails,
   addFavoriteMedicine,
-  removeFavoriteMedicine,
+  removeFavoriteMedicine,       // correct
   createPrescription,
   addMedicineToPrescription,
   updateMedicineInPrescription,
   deleteMedicineFromPrescription,
-  toggleFavoriteMedicine,
-  
-   generatePrescriptionPDF,
+  generatePrescriptionPDF,
   sendToPatient,
 } from "../controllers/prescription.controller";
 
-const router = express.Router();
+const router = Router();
 
-// Appointment
-router.get("/appointments/active", searchActiveAppointments);
+// Example routes
+router.get("/appointments/search", searchActiveAppointments);
 router.get("/appointments/:id", viewAppointmentDetails);
 
-// Medicines
-router.get("/medicines", searchMedicines);
-// View single medicine details
-router.get("/medicine/:medId", viewMedicineDetails);
+router.get("/medicines/search", searchMedicines);
+router.get("/medicines/:medId", viewMedicineDetails);
 
-router.delete("/medicine/:medId", deleteMedicineFromPrescription);
-router.put("/:id/medicines/:medId", updateMedicineInPrescription);
+router.post("/medicines/favorite", addFavoriteMedicine);
+router.delete("/medicines/favorite/:id", removeFavoriteMedicine);
 
-router.post("/favorites", addFavoriteMedicine);
-router.delete("/favorites/:id", removeFavoriteMedicine);
+router.post("/prescriptions", createPrescription);
+router.post("/prescriptions/:id/medicines", addMedicineToPrescription);
+router.put("/prescriptions/medicines/:medId", updateMedicineInPrescription);
+router.delete("/prescriptions/medicines/:medId", deleteMedicineFromPrescription);
 
-// Prescription CRUD
-router.post("/", createPrescription);
-router.post("/:id/medicines", addMedicineToPrescription);
-router.put("/:id/medicines/:medId", updateMedicineInPrescription);
-router.delete("/:id/medicines/:medId", deleteMedicineFromPrescription);
-router.patch("/favorite/:medId", toggleFavoriteMedicine);
-
-// Share and Send
 router.get("/prescriptions/:prescriptionId/pdf", generatePrescriptionPDF);
-router.post("/:id/send", sendToPatient);
-
+router.post("/prescriptions/:id/send",  sendToPatient,);
 
 export default router;
