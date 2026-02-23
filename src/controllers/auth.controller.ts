@@ -1,5 +1,4 @@
 
-
 import { Request, Response } from "express";
 import prisma from "../config/prisma";
 import { hashPassword, comparePassword } from "../utils/hash";
@@ -30,7 +29,9 @@ export const register = async (req: Request, res: Response) => {
         password: hashedPassword,
         medicalSpecs: medicalSpec,
         hospital,
-        slmcNumber
+        //slmcNumber
+            slmcNumber: slmcNumber ? Number(slmcNumber) : null
+
       }
     });
 
@@ -57,7 +58,7 @@ export const login = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
 
-    const user = await prisma.user.findUnique({ where: { email } });
+   const user = await prisma.user.findUnique({ where: { email } });
     if (!user) return res.status(404).json({ message: "User not found" });
 
     const valid = await comparePassword(password, user.password);
