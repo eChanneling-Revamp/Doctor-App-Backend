@@ -6,6 +6,7 @@ import { hashPassword, comparePassword } from "../utils/hash";
 import { generateToken } from "../utils/jwt";
 import { generateOTP } from "../utils/otp";
 import jwt from "jsonwebtoken";
+import { NotificationService } from "../services/notification.service";
 
 // ====================== REGISTER ======================
 export const register = async (req: Request, res: Response) => {
@@ -44,7 +45,10 @@ export const register = async (req: Request, res: Response) => {
       }
     });
 
-    console.log("SIGNUP OTP:", otp);
+    // Send OTP via email
+    await NotificationService.sendOTP(email, otp);
+
+    console.log("SIGNUP OTP:", otp); // Keep log for debugging
     res.json({ message: "Registered successfully. OTP sent." });
   } catch (error) {
     console.error(error);
@@ -90,7 +94,10 @@ export const forgotPassword = async (req: Request, res: Response) => {
       }
     });
 
-    console.log("RESET OTP:", otp);
+    // Send OTP via email
+    await NotificationService.sendOTP(user.email, otp);
+
+    console.log("RESET OTP:", otp); // Keep log for debugging
     res.json({ message: "OTP sent" });
   } catch (error) {
     console.error(error);

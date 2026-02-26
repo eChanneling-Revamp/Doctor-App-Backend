@@ -1,5 +1,6 @@
 import prisma from "../config/prisma";
 import ApiError from "../utils/ApiError";
+import { NotificationService } from "./notification.service";
 
 interface BookAppointmentData {
   slotId: number;
@@ -73,6 +74,19 @@ export const bookAppointmentService = async (
     });
 
     return { slotAppointment, appointment };
+  });
+
+  // Fetch additional details for the email (doctor name, etc.)
+  const doctor = await prisma.doctor.findUnique({
+      where: { id: result.appointment.doctorId },
+  });
+
+  // Send Confirmation Email
+  await NotificationService.sendAppointmentConfirmation(patientEmail, {
+      ...result.appointment,
+      doctorName: doctor?.name || "the doctor",
+      date: slot.date, // Assuming slot has the date
+      time: slot.time  // Assuming slot has the time
   });
 
   return {
