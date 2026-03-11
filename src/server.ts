@@ -6,7 +6,6 @@ import { PrismaClient } from "@prisma/client";
 import prescriptionRoutes from "./routes/prescription.routes";
 import sessionRoutes from "./routes/session.routes";
 import scheduleRoutes from "./routes/schedule.routes";
-import slotRoutes from "./routes/slot.routes";
 import appointmentRoutes from "./routes/appointment.routes";
 
 import incomeRoutes from "./routes/income.routes";
@@ -28,8 +27,7 @@ app.use(express.json());
 // ---------------- ROUTES ----------------
 app.use("/api/prescriptions", prescriptionRoutes);
 app.use("/api/sessions", sessionRoutes);
-app.use("/api/schedules", scheduleRoutes);
-app.use("/api/slots", slotRoutes);
+app.use("/api/schedule", scheduleRoutes);
 app.use("/api/appointments", appointmentRoutes);
 app.use("/api/income", incomeRoutes);
 app.use("/api/auth", authRoutes);

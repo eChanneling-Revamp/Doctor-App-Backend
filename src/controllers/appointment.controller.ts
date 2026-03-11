@@ -1,60 +1,32 @@
-
 import { Request, Response } from "express";
-import { bookAppointmentService } from "../services/apointment.services";
-import ApiError from "../utils/ApiError";
+import { createAppointmentService, getAppointmentsService } from "../services/appointment.service";
 
-export const bookAppointment = async (req: Request, res: Response) => {
+export const createAppointment = async (req: Request, res: Response) => {
+
   try {
-    const {
-      slotId,
-      patientName,
-      patientEmail,
-      patientPhone,
-      type,
-      doctorId,
-      patientId,
-      sessionId,
-      consultationFee,
-      totalAmount,
-    } = req.body;
 
-    if (
-      !slotId ||
-      !patientName ||
-      !patientEmail ||
-      !patientPhone ||
-      !type ||
-      !doctorId ||
-      !patientId ||
-      !sessionId ||
-      consultationFee == null ||
-      totalAmount == null
-    ) {
-      return res.status(400).json({ message: "Missing required fields" });
-    }
+    const appointment = await createAppointmentService(req.body);
 
-    const result = await bookAppointmentService({
-      slotId: Number(slotId),
-      patientName,
-      patientEmail,
-      patientPhone,
-      type,
-      doctorId: String(doctorId),
-      patientId: Number(patientId),
-      sessionId,
-      consultationFee: Number(consultationFee),
-      totalAmount: Number(totalAmount),
-    });
+    res.status(201).json(appointment);
 
-    return res.status(200).json(result);
+  } catch (error:any) {
 
-  } catch (err: any) {
-    console.error("Book Appointment Error:", err);
+    res.status(400).json({ error: error.message });
 
-    if (err instanceof ApiError) {
-      return res.status(err.statusCode).json({ message: err.message });
-    }
+  }
+};
 
-    return res.status(500).json({ message: "Failed to book appointment" });
+export const getAppointments = async (req: Request, res: Response) => {
+
+  try {
+
+    const appointments = await getAppointmentsService();
+
+    res.json(appointments);
+
+  } catch {
+
+    res.status(500).json({ error: "Failed to fetch appointments" });
+
   }
 };
