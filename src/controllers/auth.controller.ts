@@ -1,37 +1,65 @@
-
 import { Request, Response } from "express";
 import prisma from "../config/prisma";
 import { hashPassword, comparePassword } from "../utils/hash";
 import { generateToken } from "../utils/jwt";
 import { generateOTP } from "../utils/otp";
 import jwt from "jsonwebtoken";
+import { UserRole } from '@prisma/client';
 
 // ====================== REGISTER ======================
+
 export const register = async (req: Request, res: Response) => {
   try {
-    const { fullName, email, phone, password, medicalSpec, hospital, slmcNumber } = req.body;
+    const {
+      fullName,
+      email,
+      phone,
+      password,
+      medicalSpec,
+      slmcNumber,
+      hospital
+    } = req.body;
 
     // Check if user exists
     const exists = await prisma.user.findFirst({
-      where: { OR: [{ email }, { contactNumber: phone }] }
+      where: {
+        OR: [{ email }, { contactNumber: phone }]
+      }
     });
-    if (exists) return res.status(400).json({ message: "User already exists" });
+
+    if (exists) {
+      return res.status(400).json({ message: "User already exists" });
+    }
 
     // Hash password
     const hashedPassword = await hashPassword(password);
 
-    // Create user
+    // Create USER
     const user = await prisma.user.create({
       data: {
-        name: fullName,            // map frontend fullName → DB name
+        name: fullName,
         email,
-        contactNumber: phone,      // map frontend phone → DB contactNumber
+        contactNumber: phone,
         password: hashedPassword,
-        medicalSpecs: medicalSpec,
-        hospital,
-        //slmcNumber
-            slmcNumber: slmcNumber ? Number(slmcNumber) : null
+        role: UserRole.DOCTOR,
+        hospital: hospital || null,
+        slmcNumber: slmcNumber ? Number(slmcNumber) : null
+      }
+    });
 
+    // Create DOCTOR (omit hospital to avoid TS error)
+    await prisma.doctor.create({
+      data: {
+        name: fullName,
+        email,
+        specialization: medicalSpec,
+        qualification: "MBBS",
+        experience: 0,
+        phonenumber: phone,
+        consultationFee: 0,
+        languages: ["English"],
+        availableDays: [],
+        user: { connect: { id: user.id } }
       }
     });
 
@@ -41,14 +69,16 @@ export const register = async (req: Request, res: Response) => {
       data: {
         code: otp,
         userId: user.id,
-        expiresAt: new Date(Date.now() + 5 * 60 * 1000) // 5 minutes expiry
+        expiresAt: new Date(Date.now() + 5 * 60 * 1000)
       }
     });
 
     console.log("SIGNUP OTP:", otp);
-    res.json({ message: "Registered successfully. OTP sent." });
+
+    res.json({ message: "Registered successfully", user });
+
   } catch (error) {
-    console.error(error);
+    console.error("Register error:", error);
     res.status(500).json({ message: "Registration failed" });
   }
 };

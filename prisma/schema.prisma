@@ -37,7 +37,7 @@ model User {
   email                                                    String               @unique
   password                                                 String
   name                                                     String
-  role                                                     UserRole             @default(AGENT)
+  role                                                     UserRole              @default(DOCTOR)
   companyName                                              String?
   contactNumber                                            String?
   profileImage                                             String?
@@ -81,8 +81,8 @@ model User {
   ticket_messages                                          ticket_messages[]
   corporate_employees                                      corporate_employees? @relation(fields: [employeeId], references: [employeeid], onDelete: NoAction, onUpdate: NoAction, map: "fk_users_corporate_employees")
   packages                                                 packages?            @relation(fields: [packageId], references: [packageId], onDelete: Restrict, onUpdate: NoAction, map: "fk_users_packages")
-
-  otps OTP[]
+  doctor                                                   Doctor?
+  otps                                                     OTP[]
 
   @@map("users")
 }
@@ -207,6 +207,7 @@ model RefreshToken {
 model Doctor {
   id                String             @id @default(cuid())
   name              String
+  userId String? @unique
   email             String             @unique
   specialization    String
   qualification     String
@@ -231,6 +232,8 @@ model Doctor {
   appointments      Appointment[]      @relation("DoctorAppointments")
   schedules         Schedule[]
   payments          payments[]
+
+  user   User?   @relation(fields: [userId], references: [id])
 
   @@index([isActive], map: "idx_doctors_isactive")
   @@index([name], map: "idx_doctors_name")
@@ -1045,13 +1048,13 @@ enum TicketStatus {
   CLOSED
   CANCELLED
 }
-
 enum UserRole {
   ADMIN
-  SUPERVISOR
+  DOCTOR
+  NURSE
+  PATIENT
   AGENT
   CORPORATE
-  PATIENT
 }
 
 enum doctor_status {
@@ -1116,3 +1119,4 @@ enum session_status_list {
   PAUSED
   ENDED
 }
+

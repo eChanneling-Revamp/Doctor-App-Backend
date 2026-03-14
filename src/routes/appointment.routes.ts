@@ -1,9 +1,25 @@
-import { Router } from "express";
-import { createAppointment, getAppointments } from "../controllers/appointment.controller";
+import express from "express";
+import {
+  createAppointment,
+  getAppointments,
+  bookAppointment,
+  getCurrentAppointments,
+  getUpcomingAppointments,
+  getPastAppointments
+} from "../controllers/appointment.controller";
 
-const router = Router();
+const router = express.Router();
 
-router.post("/", createAppointment);
+router.post("/create", createAppointment);
+
 router.get("/", getAppointments);
+
+router.post("/book", bookAppointment);
+
+router.get("/current", getCurrentAppointments);
+
+router.get("/upcoming", getUpcomingAppointments);
+
+router.get("/past", getPastAppointments);
 
 export default router;

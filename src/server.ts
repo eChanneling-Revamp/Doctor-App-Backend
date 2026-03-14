@@ -27,7 +27,7 @@ app.use(express.json());
 // ---------------- ROUTES ----------------
 app.use("/api/prescriptions", prescriptionRoutes);
 app.use("/api/sessions", sessionRoutes);
-app.use("/api/schedule", scheduleRoutes);
+app.use("/api/schedules", scheduleRoutes);
 app.use("/api/appointments", appointmentRoutes);
 app.use("/api/income", incomeRoutes);
 app.use("/api/auth", authRoutes);
